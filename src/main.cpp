@@ -58,13 +58,13 @@ int main() {
             entities.push_back(e);
         }
 
-        // Shoot bullets
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 m = GetMousePosition();
-            Bullet* b = new Bullet(player.getX(), player.getY(), m.x, m.y);
-            bullets.push_back(b);
-            entities.push_back(b);
-        }
+        // // Shoot bullets
+        // if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        //     Vector2 m = GetMousePosition();
+        //     Bullet* b = new Bullet(player.getX(), player.getY(), m.x, m.y);
+        //     bullets.push_back(b);
+        //     entities.push_back(b);
+        // }
 
         // Bullet-enemy collisions
         for (size_t i = 0; i < enemies.size(); i++) {
