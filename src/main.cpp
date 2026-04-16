@@ -26,7 +26,7 @@ void removeEnemy(vector<Entity*>& entities, vector<Enemy*>& enemies, int idx) {
 }
 
 int main() {
-    InitWindow(800, 600, "PIXEL SURVIVOR");
+    InitWindow(800, 600, "PIXEL SURVIVOR2");
     SetTargetFPS(60);
 
     Player player;
