@@ -419,10 +419,7 @@ src/
 
 ---
 
-**Good luck! You've got this! 🚀**
-# PIXEL SURVIVOR - Simplified Task Breakdown (Year 2, 3 Weeks)
-
-**Team Size**: 4 members  
+**Good luck! You've got this! 🚀**  
 **Timeline**: 3 weeks  
 **Available Time**: ~3h weekdays + 6h weekends  
 **Learning Goals**: Basic OOP (inheritance, polymorphism) + Vector management (DSA)
