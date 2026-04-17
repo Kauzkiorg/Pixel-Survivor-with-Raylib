@@ -1,219 +1,189 @@
 # PIXEL SURVIVOR - Simplified Task Breakdown (Year 2, 3 Weeks)
 
-**Team Size**: 4 members  
-**Timeline**: 3 weeks  
-**Available Time**: ~3h weekdays + 6h weekends  
-**Learning Goals**: Basic OOP (inheritance, polymorphism) + Vector/DSA basics
+**Team**: 4 people | **Timeline**: 3 weeks | **Time Available**: 3-5 hours/day | **Major**: Electronics & Telecom
+
+**Features**: Skills, Weapons, Rarity, Enemy Types, Difficulty, Menu, Leveling
 
 ---
 
-## ✅ What You Already Have Done
+## 🔴 WEEK 1: Core Systems (24-40 hours total)
 
-The game **already works**! You have:
-- ✅ Player movement & shooting
-- ✅ Enemy spawning and AI
-- ✅ Bullet-enemy collisions
-- ✅ HP & score system
-- ✅ Game over screen
+#### Task 1.1: Create Skill Class with Levels [4 hours] - Person A
+**What to do**: Build skill system with 2 types (auto + key-activated) and level scaling
+- [ ] Skill class with 2 types
+- [ ] Level system (1-4)
+- [ ] Rarity affects stats (common < rare < epic)
+- [ ] Simple stat calculation~
 
----
-
-## 🎯 Remaining 3 Weeks: Polish & Improvements
-
-### WEEK 1: Fix & Polish (10 hours total)
-
-#### Task 1.1: Fix Game Bugs [2 hours] - Person A
-**What to do:**
-- [ ] Ensure score doesn't count after death ✅ (DONE)
-- [ ] Test all collisions work
-- [ ] Fix any crashes or glitches
-
-**Learning**: Debugging, testing
+**Learning**: Class design, inheritance prep
 
 ---
 
-#### Task 1.2: Improve Visuals [3 hours] - Person B
-**What to do:**
-- [ ] Make enemies different sizes (3 types)
-- [ ] Add colors to bullets
-- [ ] Better UI text display
-- [ ] Draw health bars
+#### Task 1.2: Create Weapon Class [4 hours] - Person B
+**What to do**: Build weapon system with 4 types and rarity-based stats
+- [ ] 4-5 weapon types (gun, sword, laser, shotgun)
+- [ ] Rarity affects damage/fire rate
+- [ ] Simple fire mechanics
+- [ ] Visual rarity indicators (colors)
 
-**Learning**: Basic graphics, arrays/vectors
-
-**Code example:**
-```cpp
-// Different enemy types
-enum class EnemyType { SMALL = 0, MEDIUM = 1, LARGE = 2 };
-```
+**Learning**: Composition, data organization
 
 ---
 
-#### Task 1.3: Refactor Code [3 hours] - Person C
-**What to do:**
-- [ ] Move collision code to separate functions
-- [ ] Make constants instead of magic numbers
-- [ ] Clean up main.cpp
-- [ ] Add comments
+#### Task 1.3: Add Enemy Types [3 hours] - Person C
+**What to do**: Expand Enemy class with 4 types (normal, fast, tank, ranged)
+- [ ] 4 enemy types with different HP/speed
+- [ ] Rarity affects enemy stats
+- [ ] Visual differences (size/color)
+- [ ] Update Enemy.cpp/h
 
-**Learning**: Code organization, functions, cleanup
-
-**Target:** Get your codebase clean and maintainable
+**Learning**: Class modification, enum usage
 
 ---
 
-#### Task 1.4: Improve Enemy AI [2 hours] - Person D
-**What to do:**
-- [ ] Enemies should spread out (not all clump together)
-- [ ] Different enemy types move at different speeds
-- [ ] Random spawn positions
+#### Task 1.4: Create Main Menu [3 hours] - Person D
+**What to do**: Build simple menu with difficulty selection
+- [ ] Menu screen with Start/Quit buttons
+- [ ] Difficulty selection (Easy/Normal/Hard)
+- [ ] Return to game properly
+- [ ] NO fancy animations
 
-**Learning**: Behavior variation, vectors
-
----
-
-### WEEK 2: Features (12 hours total)
-
-#### Task 2.1: Power-ups System [3 hours] - Person A
-**What to do:**
-- [ ] Create simple drops that fall from dead enemies
-- [ ] Pick-up to boost damage (red)
-- [ ] Pick-up to boost speed (blue)
-- [ ] Pick-up to heal (green)
-
-**Learning**: Polymorphism (different item types), vectors of objects
-
-**Code example:**
-```cpp
-class PowerUp {
-    int type; // 0=damage, 1=speed, 2=health
-    void apply(Player* p) { /* apply effect */ }
-};
-vector<PowerUp*> powerups;
-```
+**Learning**: Game state management, UI basics
 
 ---
 
-#### Task 2.2: Waves/Difficulty [3 hours] - Person B
-**What to do:**
-- [ ] After every 30 seconds, increase spawn rate
-- [ ] Display current wave number
-- [ ] Enemies get faster over time
-- [ ] Track playtime
+## 🟡 WEEK 2: Game Mechanics (24-40 hours total)
 
-**Learning**: Game state management, timing
+#### Task 2.1: Implement Skill Level System [4 hours] - Person A
+**What to do**: Let player collect skills and level them up
+- [ ] Store up to 4 skills in Player
+- [ ] Keyboard input (1,2,3,4) to select skill
+- [ ] Display current skill on screen
+- [ ] Skills drop from enemies
 
----
-
-#### Task 2.3: Sound & Effects [3 hours] - Person C
-**What to do:**
-- [ ] Add simple sound effects (raylib has easy sound)
-- [ ] Shoot sound
-- [ ] Enemy death sound
-- [ ] Game over sound
-
-**Learning**: Raylib audio API (very simple)
+**Learning**: Player-skill relationship, dynamic management
 
 ---
 
-#### Task 2.4: Better UI [3 hours] - Person D
-**What to do:**
-- [ ] Display current wave
-- [ ] Show enemy count
-- [ ] Display playtime
-- [ ] Better game over screen
+#### Task 2.2: Implement Weapon Switching [4 hours] - Person B
+**What to do**: Allow player to switch between weapons
+- [ ] Switch weapons with E key
+- [ ] Weapons drop from enemies (80% common, 15% rare, 5% epic)
+- [ ] Different fire patterns per weapon
+- [ ] Show current weapon in UI
 
-**Learning**: String formatting, screen layout
-
----
-
-### WEEK 3: Final Polish (8 hours total)
-
-#### Task 3.1: Testing & Bug Fixes [3 hours] - Person A
-**What to do:**
-- [ ] Play for 10 minutes, find bugs
-- [ ] Fix crashes
-- [ ] Test all features
-- [ ] Fix lag issues
+**Learning**: Vector management, weapon-player binding
 
 ---
 
-#### Task 3.2: Stats & Tracking [2 hours] - Person B
-**What to do:**
-- [ ] Track best score
-- [ ] Track playtime
-- [ ] Can reset stats
+#### Task 2.3: Add Difficulty Levels [3 hours] - Person C
+**What to do**: Implement 3 difficulty modes with stat scaling
+- [ ] Easy: 0.5x spawn, weak enemies, +30% HP
+- [ ] Normal: 1.0x spawn, normal enemies, normal HP
+- [ ] Hard: 2.0x spawn, strong enemies, -20% HP
+- [ ] Display difficulty on screen
 
-**Learning**: File I/O basics
-
----
-
-#### Task 3.3: Documentation [2 hours] - Person C
-**What to do:**
-- [ ] Comment all classes
-- [ ] Write README explaining how it works
-- [ ] Document each method
-
-**Learning**: Technical writing, code clarity
+**Learning**: Constants, multiplier-based balancing
 
 ---
 
-#### Task 3.4: Optimization [1 hour] - Person D
-**What to do:**
+#### Task 2.4: Player HP & Stat Growth [3 hours] - Person D
+**What to do**: Add player leveling with HP and damage scaling
+- [ ] Player starts with 100 HP
+- [ ] Each level: +10 HP, +5% damage
+- [ ] Health items drop from enemies
+- [ ] Display HP bar and stats in UI
+
+**Learning**: Player progression, stat systems
+
+---
+
+## 🟢 WEEK 3: Polish & Balance (24-40 hours total)
+
+#### Task 3.1: Testing & Bug Fixes [4 hours] - Person A
+**What to do**: Thoroughly test all systems
+- [ ] Play all 3 difficulties for 5 minutes each
+- [ ] Test all skill types
+- [ ] Test all weapons
+- [ ] Check for crashes/glitches
+
+**Learning**: Quality assurance, debugging
+
+---
+
+#### Task 3.2: Balance Skills/Weapons/Enemies [4 hours] - Person B
+**What to do**: Adjust game balance for fun gameplay
+- [ ] Are skills balanced? (No one too strong)
+- [ ] Are weapons balanced? (Fair tradeoffs)
+- [ ] Are enemy types balanced? (Not too easy/hard)
+- [ ] Adjust multipliers as needed
+
+**Learning**: Game design, iteration
+
+---
+
+#### Task 3.3: Visual Feedback & UI [3 hours] - Person C
+**What to do**: Polish visuals and UI clarity
+- [ ] Show skill being used (animation or text)
+- [ ] Show weapon firing (visual feedback)
+- [ ] Rarity colors (common=white, rare=blue, epic=purple)
+- [ ] Clear enemy type visuals
+
+**Learning**: Visual design, user experience
+
+---
+
+#### Task 3.4: Code Documentation [3 hours] - Person D
+**What to do**: Document code for clarity and maintainability
+- [ ] Comment all new classes (Skill, Weapon, Menu)
+- [ ] Update README with all features
 - [ ] Remove unused code
-- [ ] Check for memory leaks
-- [ ] Keep FPS smooth
+- [ ] Create simple design doc
+
+**Learning**: Technical documentation, code cleanup
 
 ---
 
 ## 📊 Time Estimate
-- Phase 1 (Week 1): ~10 hours
-- Phase 2 (Week 2): ~12 hours
-- Phase 3 (Week 3): ~8 hours
-- **Total**: ~30 hours for 4 people = **~7.5 hours per person** ✅ Realistic!
-
-**Parallel work**: All tasks in each week can be done in parallel by different team members.
+- **Week 1**: ~14 hours (core systems)
+- **Week 2**: ~14 hours (mechanics)
+- **Week 3**: ~14 hours (polish)
+- **Total**: ~42 hours for 4 people = **~10.5 hours per person** ✅ Realistic!
 
 ---
 
-## 🎓 Learning Outcomes
+## ✅ Final Checklist
 
-By the end, you'll understand:
-- ✅ **OOP Basics**: Classes, inheritance, polymorphism, virtual functions
-- ✅ **DSA Basics**: Vector management, dynamic object creation/deletion
-- ✅ **Game Design**: Game loops, collision detection, state management
-- ✅ **C++ Practices**: Encapsulation, memory management, code organization
+### Core Features
+- [ ] 2 skill types working (auto + key-based)
+- [ ] Skill levels (1-4 per skill)
+- [ ] Weapon system (gun, sword, laser, shotgun)
+- [ ] Rarity system (common, rare, epic)
+- [ ] Enemy types (4 different types)
+- [ ] Difficulty levels (easy, normal, hard)
+- [ ] Main menu
 
----
+### Game Mechanics
+- [ ] Skills affect: damage, speed, number, cooldown
+- [ ] Weapons have different stats + rarity bonuses
+- [ ] Enemies have different HP, speed, rarities
+- [ ] Player HP increases with levels
+- [ ] Difficulty scales spawn rate + enemy power
 
-## 📋 Simple Checklist
-
-### Week 1
-- [ ] All bugs fixed
-- [ ] Visual improvements done
-- [ ] Code refactored & clean
-- [ ] Enemy AI improved
-
-### Week 2
-- [ ] Power-ups working
-- [ ] Wave system working
-- [ ] Sound effects added
-- [ ] Better UI
-
-### Week 3
-- [ ] No crashes
-- [ ] Stats tracked
-- [ ] Code documented
-- [ ] Runs smoothly
+### Code Quality
+- [ ] Clean OOP structure (Skill, Weapon, Enemy classes)
+- [ ] Vector-based skill/weapon management
+- [ ] No crashes during 10-minute play
+- [ ] Documented code
 
 ---
 
 ## 💡 Pro Tips
 
-1. **Work in parallel simultaneously** - Each person takes one task
-2. **Use git branches** - Avoid conflicts
-3. **Test often** - Catch bugs early
-4. **Keep it simple** - Don't add complex features
-5. **Help each other** - You have 4 people, use that!
+1. **Work in parallel** - Each person takes one task per week
+2. **Sync daily** - Share progress, catch integration issues early
+3. **Test often** - Don't save all testing for Week 3
+4. **Keep it simple** - Don't add extra features beyond scope
+5. **Help each other** - You have 4 people, use that strength!
 
 **Good luck! You've got this! 🚀**
