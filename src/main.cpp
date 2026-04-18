@@ -82,8 +82,8 @@ int main() {
         if (GetRandomValue(0,100)<3) {
             int r=GetRandomValue(0, 100);
                  int type = 0;
-        // if (r < 45) type = 1;    
-        // if (r < 25) type = 2;  
+        if (r < 45) type = 1;    
+        if (r < 25) type = 2;  
         if (r < 10) type = 3; 
 
             Enemy* e = new Enemy(&player, type);
