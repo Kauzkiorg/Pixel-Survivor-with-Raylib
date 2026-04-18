@@ -11,11 +11,18 @@ private:
     float radius;
     float damage;
     int num_particles;
+    bool is_laser_active;
+    float laser_length;
+    float laser_timer;
+    Vector2 laser_direction;
+
 public:
     //Constructor
     Skill(Player* p);
     void update() override;
     void draw() override;
+    void activateLaser(Vector2 mousePos);
+    bool isLaserActive() const { return is_laser_active; }
     
     // Getters
     float getAngle() const { return angle; }
