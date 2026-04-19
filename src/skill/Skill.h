@@ -2,6 +2,8 @@
 #include "../core/Entity.h"
 #include "../player/Player.h"
 #include "raylib.h"
+#include <vector>
+class Enemy; // Forward declaration to avoid circular dependency
 enum class SkillType{ AUTO_BALLS, LASER_BEAM, THUNDER_STRIKE, SHURIKEN };
 class Skill : public Entity {
 private:
@@ -11,18 +13,22 @@ private:
     float radius;
     float damage;
     int num_particles;
+    //laser
     bool is_laser_active;
     float laser_length;
     float laser_timer;
     float laser_cooldown;
     const float laser_cooldown_time = 5.0f; // 5 second cooldown between laser shots
     Vector2 laser_direction;
+    //shuriken
     Texture2D shurikenTexture; 
     float selfRotation; // góc tự quay của skill
+    //thunderstrike
     float thunder_timer;
     float thunder_cooldown;
-    int thunder_strikes;
+    int thunder_level;
     float thunder_damage;
+    Texture2D thunderTexture; // texture cho hiệu ứng sét đánh
 public:
     //Constructor
     Skill(Player* p);
@@ -31,8 +37,12 @@ public:
     void activateLaser(Vector2 mousePos);
     bool isLaserActive() const { return is_laser_active; }
     float getLaserCooldown() const { return laser_cooldown; }
-    ~Skill() { UnloadTexture(shurikenTexture); }
-    void triggerThunder(vector<Enemy*>& enemies);//thunder strike
+    ~Skill() { 
+        UnloadTexture(shurikenTexture);
+        UnloadTexture(thunderTexture);
+    }
+    void triggerThunder(std::vector<Enemy*>& enemies);//thunder strike
+    
     // Getters
     float getAngle() const { return angle; }
     float getRadius() const { return radius; }

@@ -1,6 +1,6 @@
 #include "Skill.h"
 #include <cmath> // 
-
+#include "../enemy/Enemy.h"
 static constexpr float LASER_MAX_CD = 5.0f;
 
 Skill::Skill(Player* p) : player(p) {
@@ -16,10 +16,12 @@ Skill::Skill(Player* p) : player(p) {
     laser_timer=0.0f;
     laser_length=400.0f;
     laser_cooldown=0.0f;
+    //thunder strike
     thunder_timer=0.0f;
     thunder_cooldown=1.0f;
-    thunder_strikes=3;
+    thunder_level=0;
     thunder_damage=30.0f;
+    thunderTexture=LoadTexture("./thunderdungdung.png");
 }
 
 void Skill::activateLaser(Vector2 mousePos) {
@@ -39,7 +41,7 @@ void Skill::activateLaser(Vector2 mousePos) {
     }
 }
 void Skill::update() {
-    // 1. Giữ nguyên logic bám theo người chơi và Auto_ball
+    // 1. logic bám theo người chơi và Auto_ball
     x = player->getX();
     y = player->getY();
     num_particles = 1 + (player->getExp() / 1000);
@@ -59,10 +61,10 @@ void Skill::update() {
     // 4. Cập nhật thời gian cho Thunder Strike
     thunder_level = player->getExp()/1000;
     if(thunder_level>4) thunder_level=4;
-    thunder_damage=30.0f+thunder_level*10.0f;
+    thunder_damage=30.0f+(thunder_level*10.0f);
     thunder_timer += GetFrameTime();
 }
-void Skill::triggerThunder(vector<Enemy*>& enemies){
+void Skill::triggerThunder(std::vector<Enemy*>& enemies){
     if(enemies.empty()||thunder_timer< thunder_cooldown) return; // Nếu không có kẻ địch hoặc chưa hết cooldown thì không kích hoạt
     int num_bolts=1+thunder_level;
     for (int i=0;i<num_bolts;i++){
@@ -70,11 +72,36 @@ void Skill::triggerThunder(vector<Enemy*>& enemies){
         //pick random enemy
         int random_Index=GetRandomValue(0,(int)enemies.size()-1);
         Enemy* target=enemies[random_Index];
-        target->takeDamage(thunder_damage);
+        target->takeDamage((int)thunder_damage);
         // Hiển thị hiệu ứng sét đánh vào kẻ địch
-        DrawLineEx({target->getX(), target->getY()-100}, {target->getX(), target->getY()}, 5, YELLOW);
-        DrawCircle((int)target->getX(), (int)target->getY(), 20, YELLOW);
+        if(thunderTexture.id<=0){
+            DrawLineEx({target->getX(), target->getY() - 100}, {target->getX(), target->getY()}, 5, YELLOW);
+            DrawCircle((int)target->getX(), (int)target->getY(), 15, YELLOW);
+        } else {
+            // 2. Vẽ ảnh tia sét xịn
+            // Ảnh của mày là hình chữ nhật dọc, tao sẽ vẽ nó từ trên trời xuống chân quái
+            
+            float target_x = target->getX();
+            float target_y = target->getY();
+
+            // Kích thước hiển thị mong muốn cho tia sét (ví dụ rộng 20px, cao 100px)
+            float strike_width = 30.0f; 
+            float strike_height = 120.0f;
+
+            // Vị trí vẽ ảnh: 
+            // - X: Canh giữa ảnh theo X của quái
+            // - Y: Canh đáy ảnh theo Y của quái để sét đánh xuống đúng chân
+            Rectangle destRec = { 
+                target_x - (strike_width / 2.0f), 
+                target_y - strike_height, 
+                strike_width, 
+                strike_height
+            };
+            DrawTexturePro(thunderTexture, { 0, 0, (float)thunderTexture.width, (float)thunderTexture.height }, destRec, { 0, 0 }, 0, WHITE);
+        }
+        
     }
+    thunder_timer=0.0f; // Reset timer sau khi kích hoạt
 }
 
 void Skill::draw() {

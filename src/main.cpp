@@ -141,7 +141,16 @@ int main() {
                 skill->activateLaser(GetMousePosition());
             }
         }
-                
+
+        //thunder strike
+        skill->triggerThunder(enemies);
+        //check and delete dead enemies after thunder strike
+        for(int i=(int)enemies.size()-1;i>=0;i--){
+            if (enemies[i]->getHp()<=0){
+                player.addExp(10);
+                removeEnemy(entities, enemies, i);
+            }
+        }        
 
         // Player-enemy collisions
         for (auto enemy : enemies) {
