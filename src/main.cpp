@@ -37,17 +37,19 @@ int main() {
     vector<Item*> items;
     float enemyFireTimer=0; // Track cooldown for ranged enemies
     float spawnTimer = 0.0f; // Track time for spawning enemies
+    float gameTimer = 0.0f; // Track total survival time
 
     entities.push_back(&player);
     Skill* skill = new Skill(&player);
     entities.push_back(skill);
 
     while (!WindowShouldClose()) {
+        gameTimer += GetFrameTime(); // Update game timer
         if (player.getHp() <= 0) {
             BeginDrawing();
             ClearBackground(BLACK);
             DrawText("GAME OVER", 280, 250, 40, RED);
-            DrawText(TextFormat("Score: %d", player.getExp()), 350, 320, 20, WHITE);
+            DrawText(TextFormat("Score: %d", player.getScore()), 350, 320, 20, WHITE);
             EndDrawing();
             continue;
         }
@@ -90,7 +92,7 @@ int main() {
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
         // Determine enemy type based on random value
-        int r=GetRandomValue(0, 100);
+        int r=GetRandomValue(0, 99);
         int type = 0;
         if (r < 40) {
             type = 0; // 40% chance for NORMAL
@@ -129,6 +131,13 @@ int main() {
                     bullets[j]->setX(-1000);
                     
                     if (enemies[i]->getHp() <= 0) {
+                        // Award score based on enemy type
+                        int scoreType = enemies[i]->getEnemyType();
+                        if (scoreType == 0) player.addScore(10); // NORMAL
+                        else if (scoreType == 1) player.addScore(15); // FAST
+                        else if (scoreType == 2) player.addScore(25); // TANK
+                        else if (scoreType == 3) player.addScore(20); // RANGED
+                        // Spawn an item at the enemy's position with EXP value based on enemy type
                         int val = 10;
                         int type = enemies[i]->getEnemyType();
                         if (type == 1) val = 15;
@@ -152,6 +161,8 @@ int main() {
                         enemies[i]->getX(), enemies[i]->getY()) < 15) {
                 enemies[i]->takeDamage(10);
                 if (enemies[i]->getHp() <= 0) {
+                    // Award score for killing enemy with skill
+                    player.addScore(5); 
                     player.addExp(10);
                     removeEnemy(entities, enemies, i);
                 }
@@ -201,6 +212,7 @@ int main() {
         DrawFPS(10, 10);
         DrawText(TextFormat("HP: %d", player.getHp()), 10, 30, 20, WHITE);
         DrawText(TextFormat("EXP: %d", player.getExp()), 10, 60, 20, WHITE);
+        DrawText(TextFormat("Score: %d", player.getScore()), 10, 90, 20, WHITE);
         EndDrawing();
     }
 
