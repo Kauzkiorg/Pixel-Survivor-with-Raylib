@@ -43,16 +43,21 @@ int main() {
     Skill* skill = new Skill(&player);
     entities.push_back(skill);
 
-    while (!WindowShouldClose()) {
-        gameTimer += GetFrameTime(); // Update game timer
+    while (!WindowShouldClose()) { 
         if (player.getHp() <= 0) {
             BeginDrawing();
             ClearBackground(BLACK);
+            // Format time as MM:SS
+            int mins = (int)(gameTimer / 60);
+            int secs = (int)(gameTimer) % 60;
             DrawText("GAME OVER", 280, 250, 40, RED);
-            DrawText(TextFormat("Score: %d", player.getScore()), 350, 320, 20, WHITE);
+            DrawText(TextFormat("SCORE: %d", player.getScore()), 350, 320, 20, WHITE);
+            // Display survival time in MM:SS format
+            DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 305, 360, 20, WHITE);
             EndDrawing();
             continue;
         }
+        gameTimer += GetFrameTime(); // Update game timer
 
         // Update
         for (auto e : entities) e->update();
@@ -213,6 +218,11 @@ int main() {
         DrawText(TextFormat("HP: %d", player.getHp()), 10, 30, 20, WHITE);
         DrawText(TextFormat("EXP: %d", player.getExp()), 10, 60, 20, WHITE);
         DrawText(TextFormat("Score: %d", player.getScore()), 10, 90, 20, WHITE);
+        // Format time as MM:SS
+        int mins = (int)(gameTimer / 60);
+        int secs = (int)(gameTimer) % 60;
+        // Display survival time in MM:SS format
+        DrawText(TextFormat("Time: %02d:%02d", mins, secs), 10, 120, 20, WHITE);
         EndDrawing();
     }
 
