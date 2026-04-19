@@ -1,14 +1,17 @@
 #include "Item.h"
 
 // Constructor
-Item::Item(float ix, float iy, int val) :  expValue(val), timer(0.0f), duration(15.0f) {
+Item::Item(float ix, float iy, int val, int ID) :  expValue(val), ID(ID), timer(0.0f), duration(15.0f) {
     this->x = ix;
     this->y = iy;
-    // Assign color based on EXP value
-    if (expValue <= 10) {
-        color = RED;    // Common gems
+    if (ID == 1){
+        color = RED;
+    }
+    // EXP item
+    else if (expValue <= 10) {
+        color = YELLOW;    // Common gems
     } else if (expValue <= 20) {
-        color = YELLOW; // Rare gems
+        color = BLUE; // Rare gems
     } else {
         color = GREEN;  // Epic gems
     }
@@ -31,7 +34,13 @@ void Item::draw() {
 
     // 2. Draw both circle and outline only if it's in a "visible" blink state
     if (shouldDraw) {
+        if (ID == 1){
+            DrawRectangle(x-5, y-5, 10, 10, color); // Draw HP item as a square
+            DrawRectangleLines(x-5, y-5, 10, 10, WHITE); // Outline for HP item
+            return; // Skip drawing the circle for HP items
+        } else if (ID == 0){
         DrawCircle(x, y, 4, color);        // Solid core (Reduced size to 4)
         DrawCircleLines(x, y, 4, WHITE);   // Consistent outline
+    }
     }
 }

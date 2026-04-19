@@ -38,12 +38,22 @@ int main() {
     float enemyFireTimer=0; // Track cooldown for ranged enemies
     float spawnTimer = 0.0f; // Track time for spawning enemies
     float gameTimer = 0.0f; // Track total survival time
+    float hpSpawnTimer = 0.0f; // Track time for spawning HP items
 
     entities.push_back(&player);
     Skill* skill = new Skill(&player);
     entities.push_back(skill);
 
     while (!WindowShouldClose()) { 
+        hpSpawnTimer += GetFrameTime();
+        if (hpSpawnTimer >= 10.0f) { // Spawn HP item every 10 seconds
+            float randomX = GetRandomValue(50, 750);
+            float randomY = GetRandomValue(50, 550);
+            Item* hpItem = new Item(randomX, randomY, 0, 1); // ID 1 for HP item
+            items.push_back(hpItem);
+            entities.push_back(hpItem);
+            hpSpawnTimer = 0.0f;
+        }
         if (player.getHp() <= 0) {
             BeginDrawing();
             ClearBackground(BLACK);
@@ -143,12 +153,12 @@ int main() {
                         else if (scoreType == 2) player.addScore(25); // TANK
                         else if (scoreType == 3) player.addScore(20); // RANGED
                         // Spawn an item at the enemy's position with EXP value based on enemy type
-                        int val = 10;
+                        int val = 10; // NORMAL EXP
                         int type = enemies[i]->getEnemyType();
-                        if (type == 1) val = 15;
-                        if (type == 2) val = 25;
-                        if (type == 3) val = 20;
-                        Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val);
+                        if (type == 1) val = 15; // FAST EXP
+                        if (type == 2) val = 25;// TANK EXP 
+                        if (type == 3) val = 20;  // RANGED EXP
+                        Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val, 0);
                         items.push_back(item);
                         entities.push_back(item);
                         removeEntity(entities, bullets[j]);
@@ -194,8 +204,12 @@ int main() {
         for (size_t k =0; k < items.size(); k++){
             float dist = distance(player.getX(), player.getY(), items[k]->getX(), items[k]->getY());
             if (dist < 20){
-                int pointsEarned = items[k]->getExpValue();
-                player.addExp(pointsEarned);
+                if (items[k]->getID() == 1) { // HP item
+                    player.setHp(player.getHp() + 10); // Heal player by 20 HP
+                } else { // EXP item
+                    int pointsEarned = items[k]->getExpValue();
+                    player.addExp(pointsEarned);
+                }
                 removeEntity(entities, items[k]);
                 delete items[k];
                 items.erase(items.begin() + k);
