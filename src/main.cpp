@@ -9,6 +9,7 @@
 #include "skill/Skill.h"
 #include "bullet/Bullet.h"
 #include "Item/Item.h"
+#include "wave/WaveManager.h"
 using namespace std;
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -31,6 +32,7 @@ int main() {
     SetTargetFPS(60);
 
     Player player;
+    WaveManager waveSystem;
     vector<Entity*> entities;
     vector<Enemy*> enemies;
     vector<Bullet*> bullets;
@@ -68,6 +70,7 @@ int main() {
             continue;
         }
         gameTimer += GetFrameTime(); // Update game timer
+        waveSystem.update(GetFrameTime());
 
         // Update
         for (auto e : entities) e->update();
@@ -102,28 +105,17 @@ int main() {
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
         spawnTimer += GetFrameTime();
-        if (spawnTimer >= 1.0f) {
+        if (spawnTimer >= waveSystem.getSpawnInterval()) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
         // Determine enemy type based on random value
-        int r=GetRandomValue(0, 99);
-        int type = 0;
-        if (r < 40) {
-            type = 0; // 40% chance for NORMAL
-        }   
-        else if (r < 70) {
-            type = 2; // 30% chance for FAST
-        }  
-        else if (r < 90) {
-            type = 1; // 20% chance for TANK
-        }
-        else {
-            type = 3; // 10% chance for RANGED
-        } 
+        int type =waveSystem.getRandomEnemyType();
             Enemy* e = new Enemy(&player, type);
             // Set spawn position based on random angle and fixed radius from player
             e->setPosition(spawnX, spawnY);
+            float multiplier = waveSystem.getStatMultiplier();
+            e->setHp((int)(e->getHp() * multiplier));// Scale HP based on current wave
             enemies.push_back(e);
             entities.push_back(e);
             spawnTimer = 0.0f;
@@ -252,6 +244,7 @@ int main() {
         int secs = (int)(gameTimer) % 60;
         // Display survival time in MM:SS format
         DrawText(TextFormat("Time: %02d:%02d", mins, secs), 330, 20, 25, WHITE);
+        DrawText(TextFormat("Wave: %d", waveSystem.getCurrentWaveNumber()), 700, 20, 25, WHITE);
         EndDrawing();
     }
 
