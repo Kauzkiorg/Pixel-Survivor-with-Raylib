@@ -4,7 +4,7 @@
 Bullet::Bullet(float sx, float sy, float tx, float ty) {
     x = sx;
     y = sy;
-    
+    isEnemyBullet = false;
     float dx = tx - sx;
     float dy = ty - sy;
     float dist = sqrt(dx*dx + dy*dy);
@@ -23,5 +23,9 @@ void Bullet::update() {
 }
 
 void Bullet::draw() {
-    DrawCircle(x, y, 3, YELLOW);
+    if (isEnemyBullet) {
+        DrawCircle(x, y, 3, RED); // Enemy bullet color
+    } else {
+        DrawCircle(x, y, 3, YELLOW); // Player bullet color
+    }
 }

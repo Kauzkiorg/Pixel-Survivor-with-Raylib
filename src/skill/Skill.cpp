@@ -44,7 +44,9 @@ void Skill::update() {
     // 1. logic bám theo người chơi và Auto_ball
     x = player->getX();
     y = player->getY();
-    num_particles = 1 + (player->getExp() / 1000);
+    // Scale num_particles based on player level (1 particle per level, max 10)
+    num_particles = 1 + (player->getLevel() - 1);
+    if (num_particles > 10) num_particles = 10;
     angle += 2.5f * GetFrameTime();
     selfRotation += 15.0f * GetFrameTime(); // Tốc độ tự quay của skill
 
@@ -59,9 +61,10 @@ void Skill::update() {
         laser_cooldown -= GetFrameTime();
     }
     // 4. Cập nhật thời gian cho Thunder Strike
-    thunder_level = player->getExp()/1000;
-    if(thunder_level>4) thunder_level=4;
-    thunder_damage=30.0f+(thunder_level*10.0f);
+    // Scale thunder level based on player level (max level 4)
+    thunder_level = player->getLevel();
+    if(thunder_level > 4) thunder_level = 4;
+    thunder_damage = 30.0f + (thunder_level * 10.0f);
     thunder_timer += GetFrameTime();
 }
 void Skill::triggerThunder(std::vector<Enemy*>& enemies){
