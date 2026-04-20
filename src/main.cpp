@@ -39,7 +39,6 @@ int main() {
     vector<Item*> items;
     float enemyFireTimer=0; // Track cooldown for ranged enemies
     float spawnTimer = 0.0f; // Track time for spawning enemies
-    float gameTimer = 0.0f; // Track total survival time
     float hpSpawnTimer = 0.0f; // Track time for spawning HP items
 
     entities.push_back(&player);
@@ -60,8 +59,9 @@ int main() {
             BeginDrawing();
             ClearBackground(BLACK);
             // Format time as MM:SS
-            int mins = (int)(gameTimer / 60);
-            int secs = (int)(gameTimer) % 60;
+            int total = (int)waveSystem.getInternalTimer();
+            int mins = (int)(total / 60);
+            int secs = (int)(total % 60);
             DrawText("GAME OVER", 280, 250, 40, RED);
             DrawText(TextFormat("SCORE: %d", player.getScore()), 350, 320, 20, WHITE);
             // Display survival time in MM:SS format
@@ -69,8 +69,8 @@ int main() {
             EndDrawing();
             continue;
         }
-        gameTimer += GetFrameTime(); // Update game timer
-        waveSystem.update(GetFrameTime());
+        float dt = GetFrameTime();
+        waveSystem.update(dt);
 
         // Update
         for (auto e : entities) e->update();
@@ -110,7 +110,7 @@ int main() {
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
         // Determine enemy type based on random value
-        int type =waveSystem.getRandomEnemyType();
+            int type =waveSystem.getRandomEnemyType();
             Enemy* e = new Enemy(&player, type);
             // Set spawn position based on random angle and fixed radius from player
             e->setPosition(spawnX, spawnY);
@@ -240,11 +240,13 @@ int main() {
         
         DrawText(TextFormat("Score: %d", player.getScore()), 10, 80, 20, WHITE);
         // Format time as MM:SS
-        int mins = (int)(gameTimer / 60);
-        int secs = (int)(gameTimer) % 60;
+        int total = (int)waveSystem.getInternalTimer();
+        int mins = (int)(total / 60);
+        int secs = (int)(total % 60);
         // Display survival time in MM:SS format
         DrawText(TextFormat("Time: %02d:%02d", mins, secs), 330, 20, 25, WHITE);
-        DrawText(TextFormat("Wave: %d", waveSystem.getCurrentWaveNumber()), 700, 20, 25, WHITE);
+        Color waveColor = (waveSystem.getCurrentWaveNumber() > 3.0 ) ? RED : WHITE;
+        DrawText(TextFormat("Wave: %d", waveSystem.getCurrentWaveNumber()), 355, 50, 22, waveColor);
         EndDrawing();
     }
 
