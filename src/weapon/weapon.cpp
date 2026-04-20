@@ -20,13 +20,18 @@ static float dot(Vector2 a, Vector2 b) {
 
 static WeaponBullet makeBullet(const Vector2& pos, const Vector2& vel, float lifetime, int damage,
     int pierce, bool affectedByGravity, bool isBoomerang, float maxTravelDistance, float returnSpeed,
-    Color color, float radius = 4.0f, bool visualOnly = false, bool isSwordSlash = false) {
+    Color color, float radius = 4.0f, bool visualOnly = false, bool isSwordSlash = false,
+    float length = 0.0f, float angle = 0.0f, float innerRadius = 0.0f, float sweepAngle = 0.0f) {
     WeaponBullet bullet;
     bullet.pos = pos;
     bullet.vel = vel;
     bullet.startPos = pos;
     bullet.lifetime = lifetime;
     bullet.radius = radius;
+    bullet.innerRadius = innerRadius;
+    bullet.length = length;
+    bullet.angle = angle;
+    bullet.sweepAngle = sweepAngle;
     bullet.damage = damage;
     bullet.pierce = pierce;
     bullet.affectedByGravity = affectedByGravity;
@@ -49,6 +54,13 @@ void Weapon::update(Player& player, const std::vector<Enemy*>& enemies, std::vec
     Vector2 targetPos, bool isAttacking) {
     timer += GetFrameTime();
     if (isAttacking && timer >= fireRate) {
+        if (dynamic_cast<Boomerang*>(this) != nullptr) {
+            for (const WeaponBullet& bullet : bullets) {
+                if (bullet.isBoomerang) {
+                    return;
+                }
+            }
+        }
         timer = 0;
         attack(player, enemies, bullets, targetPos);
     }
@@ -59,7 +71,7 @@ void Weapon::setStats(int dmg, float rate, float speed, float rng, float life, i
     range = rng; lifetime = life; pierce = p;
 }
 
-// Sword - Long whip-like strike
+// Sword - Temporary rotating swipe
 Sword::Sword() : Weapon(10, 0.45f, 0, 170, 0.18f, 0) {}
 
 void Sword::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
@@ -70,44 +82,41 @@ void Sword::attack(Player& player, const std::vector<Enemy*>& enemies, std::vect
         slashDir = player.getFacingDir();
     }
 
-    const float minReach = 45.0f;
-    const float slashWidth = 28.0f;
-    Vector2 slashStart = {
-        playerPos.x + slashDir.x * minReach,
-        playerPos.y + slashDir.y * minReach
-    };
-    Vector2 slashEnd = {
-        playerPos.x + slashDir.x * range,
-        playerPos.y + slashDir.y * range
-    };
+    const float minReach = 28.0f;
+    const float swipeAngle = 45.0f * DEG2RAD;
+    const float halfSwipeAngle = swipeAngle * 0.5f;
+    const float swingThickness = 14.0f;
+    float baseAngle = atan2f(slashDir.y, slashDir.x);
 
     bool hitEnemy = false;
     for (Enemy* enemy : enemies) {
         if (enemy == nullptr) continue;
 
         Vector2 enemyPos = {enemy->getX(), enemy->getY()};
-        Vector2 fromStart = {enemyPos.x - slashStart.x, enemyPos.y - slashStart.y};
-        Vector2 alongSlash = {slashEnd.x - slashStart.x, slashEnd.y - slashStart.y};
-        float slashLength = dist(slashStart, slashEnd);
-        Vector2 alongDir = normalize(alongSlash);
-        float projection = dot(fromStart, alongDir);
+        Vector2 toEnemy = {enemyPos.x - playerPos.x, enemyPos.y - playerPos.y};
+        float enemyDist = dist(playerPos, enemyPos);
+        if (enemyDist < minReach || enemyDist > range + swingThickness) continue;
 
-        if (projection < 0 || projection > slashLength) continue;
+        float enemyAngle = atan2f(toEnemy.y, toEnemy.x);
+        float angleDiff = enemyAngle - baseAngle;
+        while (angleDiff > PI) angleDiff -= 2 * PI;
+        while (angleDiff < -PI) angleDiff += 2 * PI;
 
-        Vector2 closestPoint = {
-            slashStart.x + alongDir.x * projection,
-            slashStart.y + alongDir.y * projection
-        };
-
-        if (dist(enemyPos, closestPoint) <= slashWidth) {
+        if (fabsf(angleDiff) <= halfSwipeAngle) {
             enemy->takeDamage(damage + player.getDamage());
             hitEnemy = true;
         }
     }
 
-    WeaponBullet slash = makeBullet(slashEnd, {0, 0}, lifetime, 0, 0, false, false, range, 0.0f,
-        hitEnemy ? GOLD : YELLOW, slashWidth, true, true);
+    float startAngle = (baseAngle - halfSwipeAngle) * RAD2DEG;
+    WeaponBullet slash = makeBullet(playerPos, {0, 0}, lifetime, 0, 0, false, false, lifetime, 0.0f,
+        hitEnemy ? GOLD : YELLOW, swingThickness, true, true, range, startAngle,
+        minReach, swipeAngle * RAD2DEG);
     slash.startPos = playerPos;
+    slash.pos = {
+        playerPos.x + cosf(baseAngle - halfSwipeAngle) * range,
+        playerPos.y + sinf(baseAngle - halfSwipeAngle) * range
+    };
     bullets.push_back(slash);
 }
 
@@ -159,7 +168,7 @@ void Knife::attack(Player& player, const std::vector<Enemy*>& enemies, std::vect
 }
 
 // Boomerang projectile
-Boomerang::Boomerang() : Weapon(15, 1.2f, 260, 240, 2.2f, 3) {}
+Boomerang::Boomerang() : Weapon(15, 1.2f, 440, 240, 2.2f, 3) {}
 
 void Boomerang::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
     Vector2 targetPos) {
@@ -170,13 +179,30 @@ void Boomerang::attack(Player& player, const std::vector<Enemy*>& enemies, std::
         dir = player.getFacingDir();
     }
     bullets.push_back(makeBullet(playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed},
-        lifetime, damage + player.getDamage(), pierce, false, true, range, projectileSpeed * 1.2f, ORANGE));
+        lifetime, damage + player.getDamage(), pierce, false, true, range, projectileSpeed * 2.0f,
+        ORANGE, 14.0f));
 }
 
 // Update bullets (move, apply gravity, check collisions)
 void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, std::vector<Enemy*>& enemies, float dt) {
     for (int i = (int)bullets.size() - 1; i >= 0; i--) {
         WeaponBullet& b = bullets[i];
+
+        if (b.isSwordSlash) {
+            b.startPos = {player.getX(), player.getY()};
+            float totalLifetime = b.maxTravelDistance;
+            float elapsed = totalLifetime - b.lifetime;
+            float progress = (totalLifetime > 0.0f) ? elapsed / totalLifetime : 1.0f;
+            if (progress < 0.0f) progress = 0.0f;
+            if (progress > 1.0f) progress = 1.0f;
+
+            float currentAngle = b.angle + b.sweepAngle * progress;
+            float currentAngleRad = currentAngle * DEG2RAD;
+            b.pos = {
+                b.startPos.x + cosf(currentAngleRad) * b.length,
+                b.startPos.y + sinf(currentAngleRad) * b.length
+            };
+        }
 
         if (b.isBoomerang) {
             if (!b.isReturning && dist(b.pos, b.startPos) >= b.maxTravelDistance) {
@@ -208,7 +234,7 @@ void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, std::vect
             if (enemy == nullptr) continue;
 
             Vector2 enemyPos = {enemy->getX(), enemy->getY()};
-            if (!b.visualOnly && dist(b.pos, enemyPos) < 15) {
+            if (!b.visualOnly && dist(b.pos, enemyPos) < b.radius + 11.0f) {
                 enemy->takeDamage(b.damage);
                 if (!b.isBoomerang) {
                     b.pierce--;
@@ -239,9 +265,14 @@ void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, std::vect
 void drawBullets(const std::vector<WeaponBullet>& bullets) {
     for (const auto& b : bullets) {
         if (b.isSwordSlash) {
-            DrawLineEx(b.startPos, b.pos, 6.0f, Fade(b.color, 0.9f));
-            DrawCircleV(b.pos, b.radius, Fade(b.color, 0.45f));
-            DrawCircleLines((int)b.pos.x, (int)b.pos.y, b.radius, b.color);
+            Vector2 dir = normalize({b.pos.x - b.startPos.x, b.pos.y - b.startPos.y});
+            Vector2 innerPoint = {
+                b.startPos.x + dir.x * b.innerRadius,
+                b.startPos.y + dir.y * b.innerRadius
+            };
+            DrawLineEx(innerPoint, b.pos, b.radius, Fade(b.color, 0.38f));
+            DrawCircleV(innerPoint, b.radius * 0.45f, Fade(b.color, 0.25f));
+            DrawCircleV(b.pos, b.radius * 0.55f, Fade(b.color, 0.55f));
             continue;
         }
 

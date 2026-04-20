@@ -5,13 +5,16 @@
 #include "raylib.h"
 #include <vector>
 
-// Simple projectile struct for weapons
 struct WeaponBullet {
     Vector2 pos;
     Vector2 vel;
     Vector2 startPos;
     float lifetime;
     float radius;
+    float innerRadius;
+    float length;
+    float angle;
+    float sweepAngle;
     int damage;
     int pierce;
     bool affectedByGravity;
@@ -24,7 +27,6 @@ struct WeaponBullet {
     Color color;
 };
 
-// Base Weapon class
 class Weapon {
 protected:
     float fireRate;
@@ -38,16 +40,15 @@ protected:
 public:
     Weapon(int dmg, float rate, float speed, float rng, float life, int p);
     virtual ~Weapon() {}
-    
+
     virtual void update(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
         Vector2 targetPos, bool isAttacking);
     virtual void attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
         Vector2 targetPos) = 0;
-    
+
     void setStats(int dmg, float rate, float speed, float rng, float life, int p);
 };
 
-// Sword - Whip-like weapon
 class Sword : public Weapon {
 public:
     Sword();
@@ -55,7 +56,6 @@ public:
         Vector2 targetPos) override;
 };
 
-// Magic Wand - Auto-target nearest enemy
 class MagicWand : public Weapon {
 public:
     MagicWand();
@@ -63,7 +63,6 @@ public:
         Vector2 targetPos) override;
 };
 
-// Knife - Shoots straight forward
 class Knife : public Weapon {
 public:
     Knife();
@@ -71,7 +70,6 @@ public:
         Vector2 targetPos) override;
 };
 
-// Boomerang-style projectile
 class Boomerang : public Weapon {
 public:
     Boomerang();
