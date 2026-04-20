@@ -1,6 +1,9 @@
 #pragma once
 #include "../core/Entity.h"
 #include "raylib.h"
+#include <vector>
+
+struct Bullet; // Forward declaration
 
 class Player : public Entity {
 private:
@@ -8,9 +11,10 @@ private:
     int maxHp = 100;
     int level = 1;
     int exp = 0;
-    int score = 0; // New score variable
+    int score = 0;
     float speed = 3.0f;
-    int damage = 10; // Player damage
+    int damage = 10;
+    Vector2 facingDir = {1, 0}; // Facing direction
     
 public:
     //Constructor
@@ -26,6 +30,7 @@ public:
     int getScore() const { return score; } // Getter for score
     float getSpeed() const { return speed; }
     int getDamage() const { return damage; }
+    Vector2 getFacingDir() const { return facingDir; }
     int getExpToNextLevel() const; // Returns EXP needed for next level
     
     // Setters
