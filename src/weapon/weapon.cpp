@@ -4,46 +4,38 @@
 #include <algorithm>
 
 // Helper to normalize a vector
-static Vector2 normalize(Vector2 v) {
-    float len = sqrtf(v.x * v.x + v.y * v.y);
-    if (len == 0) return {0, 0};
-    return {v.x / len, v.y / len};
+static Vector2 normalizeVector(Vector2 vector) {
+    float length = sqrtf(vector.x * vector.x + vector.y * vector.y);
+    if (length == 0) return {0, 0};
+    return {vector.x / length, vector.y / length};
 }
 
 // Helper to calculate distance between two points
-static float Vector2Dist(Vector2 a, Vector2 b) {
-    float dx = b.x - a.x;
-    float dy = b.y - a.y;
-    return sqrtf(dx * dx + dy * dy);
+static float calculateDistance(Vector2 pointA, Vector2 pointB) {
+    float deltaX = pointB.x - pointA.x;
+    float deltaY = pointB.y - pointA.y;
+    return sqrtf(deltaX * deltaX + deltaY * deltaY);
 }
 
 // Weapon constructor - sets stats based on weapon type
-Weapon::Weapon(int type) : weaponType(type), timer(0) {
-    // Set default stats for each weapon type
-    switch (type) {
+Weapon::Weapon(int weaponTypeNumber) : weaponType(weaponTypeNumber), currentCooldownTimer(0) {
+    // Set simple stats for each weapon type
+    switch (weaponTypeNumber) {
         case 0: // Sword
-            damage = 15;
-            cooldown = 0.5f;
-            speed = 0;
-            range = 80;
+            weaponDamage = 15;
+            attackCooldown = 0.5f;
             break;
         case 1: // Magic Wand
-            damage = 8;
-            cooldown = 0.8f;
-            speed = 300;
-            range = 400;
+            weaponDamage = 8;
+            attackCooldown = 0.8f;
             break;
         case 2: // Knife
-            damage = 6;
-            cooldown = 0.3f;
-            speed = 500;
-            range = 300;
+            weaponDamage = 6;
+            attackCooldown = 0.3f;
             break;
         case 3: // Spell Book
-            damage = 20;
-            cooldown = 1.0f;
-            speed = 400;
-            range = 500;
+            weaponDamage = 20;
+            attackCooldown = 1.0f;
             break;
     }
 }
@@ -61,147 +53,149 @@ const char* Weapon::getName() const {
 
 // Update weapon - handles cooldown and attacks
 void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
-                    std::vector<WeaponBullet>& bullets, Vector2 targetPos, bool isAttacking) {
-    timer += GetFrameTime();
-    if (isAttacking && timer >= cooldown) {
-        timer = 0;
-        attack(player, enemies, bullets, targetPos);
+                    std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition, bool isAttacking) {
+    currentCooldownTimer += GetFrameTime();
+    if (isAttacking && currentCooldownTimer >= attackCooldown) {
+        currentCooldownTimer = 0;
+        attack(player, enemies, projectiles, targetPosition);
     }
 }
 
 // Internal attack method - handles different weapon behaviors
 void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
-                    std::vector<WeaponBullet>& bullets, Vector2 targetPos) {
-    Vector2 playerPos = {player.getX(), player.getY()};
+                    std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition) {
+    Vector2 playerPosition = {player.getX(), player.getY()};
     
     switch (weaponType) {
         case 0: { // Sword - 45 degree cone attack
-            Vector2 toTarget = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
+            Vector2 directionToTarget = normalizeVector({targetPosition.x - playerPosition.x, targetPosition.y - playerPosition.y});
             float coneThreshold = 0.924f; // cos(22.5 degrees)
             
             for (Enemy* enemy : enemies) {
-                Vector2 enemyPos = {enemy->getX(), enemy->getY()};
-                float dist = Vector2Dist(playerPos, enemyPos);
+                Vector2 enemyPosition = {enemy->getX(), enemy->getY()};
+                float distanceToEnemy = calculateDistance(playerPosition, enemyPosition);
                 
-                if (dist <= range) {
-                    Vector2 toEnemy = normalize({enemyPos.x - playerPos.x, enemyPos.y - playerPos.y});
-                    float dot = toTarget.x * toEnemy.x + toTarget.y * toEnemy.y;
+                if (distanceToEnemy <= 80) { // Fixed range for sword
+                    Vector2 directionToEnemy = normalizeVector({enemyPosition.x - playerPosition.x, enemyPosition.y - playerPosition.y});
+                    float dotProduct = directionToTarget.x * directionToEnemy.x + directionToTarget.y * directionToEnemy.y;
                     
-                    if (dot >= coneThreshold) {
-                        enemy->takeDamage(damage + player.getDamage());
+                    if (dotProduct >= coneThreshold) {
+                        enemy->takeDamage(weaponDamage + player.getDamage());
                     }
                 }
             }
             
-            // Visual effect for sword slash
-            float attackAngle = atan2(toTarget.y, toTarget.x);
-            bullets.push_back({playerPos, {0,0}, 0.1f, range, 0, YELLOW, 1, attackAngle});
+            // Visual effect for sword slash - draw 45-degree arc
+            float attackAngle = atan2(directionToTarget.y, directionToTarget.x);
+            projectiles.push_back({playerPosition, {0,0}, 0.1f, 80, 0, YELLOW, 1, attackAngle});
             break;
         }
         
         case 1: { // Magic Wand - auto-target nearest enemy
-            Enemy* nearest = nullptr;
-            float minDist = range;
+            Enemy* nearestEnemy = nullptr;
+            float minimumDistance = 400; // Fixed range
             
             for (Enemy* enemy : enemies) {
-                float d = Vector2Dist(playerPos, {enemy->getX(), enemy->getY()});
-                if (d < minDist) {
-                    minDist = d;
-                    nearest = enemy;
+                float distanceToEnemy = calculateDistance(playerPosition, {enemy->getX(), enemy->getY()});
+                if (distanceToEnemy < minimumDistance) {
+                    minimumDistance = distanceToEnemy;
+                    nearestEnemy = enemy;
                 }
             }
             
-            if (nearest) {
-                Vector2 dir = normalize({nearest->getX() - playerPos.x, nearest->getY() - playerPos.y});
-                bullets.push_back({playerPos, {dir.x * speed, dir.y * speed}, 2.0f, 6.0f, 
-                                  damage + player.getDamage(), PURPLE, 0, 0});
+            if (nearestEnemy) {
+                Vector2 directionToEnemy = normalizeVector({nearestEnemy->getX() - playerPosition.x, nearestEnemy->getY() - playerPosition.y});
+                Vector2 projectileVelocity = {directionToEnemy.x * 300, directionToEnemy.y * 300};
+                projectiles.push_back({playerPosition, projectileVelocity, 2.0f, 6.0f, 
+                                      weaponDamage + player.getDamage(), PURPLE, 0, 0});
             }
             break;
         }
         
         case 2: { // Knife - shoots straight toward target
-            Vector2 dir = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
-            bullets.push_back({playerPos, {dir.x * speed, dir.y * speed}, 1.0f, 4.0f, 
-                              damage + player.getDamage(), SKYBLUE, 0, 0});
+            Vector2 directionToTarget = normalizeVector({targetPosition.x - playerPosition.x, targetPosition.y - playerPosition.y});
+            Vector2 projectileVelocity = {directionToTarget.x * 500, directionToTarget.y * 500};
+            projectiles.push_back({playerPosition, projectileVelocity, 1.0f, 4.0f, 
+                                  weaponDamage + player.getDamage(), SKYBLUE, 0, 0});
             break;
         }
         
         case 3: { // Spell Book - explosive projectile
-            Vector2 dir = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
-            bullets.push_back({playerPos, {dir.x * speed, dir.y * speed}, 2.0f, 8.0f, 
-                              damage + player.getDamage(), PURPLE, 2, 100.0f}); // type=2 for explosion, angle=explosion radius
+            Vector2 directionToTarget = normalizeVector({targetPosition.x - playerPosition.x, targetPosition.y - playerPosition.y});
+            Vector2 projectileVelocity = {directionToTarget.x * 400, directionToTarget.y * 400};
+            projectiles.push_back({playerPosition, projectileVelocity, 2.0f, 8.0f, 
+                                  weaponDamage + player.getDamage(), PURPLE, 2, 150.0f});
             break;
         }
     }
 }
 
-// Update all active bullets
-void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, 
-                   std::vector<Enemy*>& enemies, float dt) {
-    for (int i = (int)bullets.size() - 1; i >= 0; i--) {
-        bullets[i].pos.x += bullets[i].vel.x * dt;
-        bullets[i].pos.y += bullets[i].vel.y * dt;
-        bullets[i].lifetime -= dt;
+// Update all active projectiles
+void updateProjectiles(std::vector<WeaponProjectile>& projectiles, std::vector<Enemy*>& enemies, float deltaTime) {
+    for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
+        projectiles[i].position.x += projectiles[i].velocity.x * deltaTime;
+        projectiles[i].position.y += projectiles[i].velocity.y * deltaTime;
+        projectiles[i].lifeTime -= deltaTime;
         
         // Collision check with enemies
         for (int j = (int)enemies.size() - 1; j >= 0; j--) {
-            if (bullets[i].damage > 0 && 
-                CheckCollisionCircles(bullets[i].pos, bullets[i].radius, 
+            if (projectiles[i].damage > 0 && 
+                CheckCollisionCircles(projectiles[i].position, projectiles[i].radius, 
                                      {enemies[j]->getX(), enemies[j]->getY()}, 10)) {
                 
-                enemies[j]->takeDamage(bullets[i].damage);
+                enemies[j]->takeDamage(projectiles[i].damage);
                 
                 // Handle explosion (type 2)
-                if (bullets[i].type == 2) {
-                    float explosionRadius = bullets[i].angle;
+                if (projectiles[i].type == 2) {
+                    float explosionRadius = projectiles[i].angle;
                     
                     // Damage all enemies in explosion radius
                     for (int k = 0; k < (int)enemies.size(); k++) {
                         if (k != j) {
-                            Vector2 enemyPos = {enemies[k]->getX(), enemies[k]->getY()};
-                            float distToExplosion = Vector2Dist(bullets[i].pos, enemyPos);
+                            Vector2 enemyPosition = {enemies[k]->getX(), enemies[k]->getY()};
+                            float distanceToExplosion = calculateDistance(projectiles[i].position, enemyPosition);
                             
-                            if (distToExplosion <= explosionRadius) {
-                                enemies[k]->takeDamage(bullets[i].damage / 2);
+                            if (distanceToExplosion <= explosionRadius) {
+                                enemies[k]->takeDamage(projectiles[i].damage / 2);
                             }
                         }
                     }
                     
                     // Create explosion visual
-                    bullets.push_back({bullets[i].pos, {0,0}, 0.3f, 0, 0, ORANGE, 2, explosionRadius});
+                    projectiles.push_back({projectiles[i].position, {0,0}, 0.3f, 0, 0, ORANGE, 2, explosionRadius});
                 }
                 
-                bullets[i].lifetime = 0; // Destroy bullet on hit
+                projectiles[i].lifeTime = 0; // Destroy projectile on hit
                 break;
             }
         }
         
-        if (bullets[i].lifetime <= 0) {
-            bullets.erase(bullets.begin() + i);
+        if (projectiles[i].lifeTime <= 0) {
+            projectiles.erase(projectiles.begin() + i);
         }
     }
 }
 
-// Draw all bullets
-void drawBullets(const std::vector<WeaponBullet>& bullets) {
-    for (const auto& b : bullets) {
+// Draw all projectiles
+void drawProjectiles(const std::vector<WeaponProjectile>& projectiles) {
+    for (const auto& projectile : projectiles) {
         // Sword slash visual (type 1)
-        if (b.type == 1) {
-            float angleDeg = b.angle * (180.0f / 3.14159265f);
-            float startAngle = angleDeg - 22.5f;
-            float endAngle = angleDeg + 22.5f;
+        if (projectile.type == 1) {
+            float angleDegrees = projectile.angle * (180.0f / 3.14159265f);
+            float startAngle = angleDegrees - 22.5f;
+            float endAngle = angleDegrees + 22.5f;
             
-            DrawCircleSector(b.pos, b.radius, startAngle, endAngle, 8, Fade(YELLOW, b.lifetime * 10));
-            DrawCircleSectorLines(b.pos, b.radius, startAngle, endAngle, 8, Fade(WHITE, b.lifetime * 10));
+            DrawCircleSector(projectile.position, projectile.radius, startAngle, endAngle, 8, Fade(YELLOW, projectile.lifeTime * 10));
+            DrawCircleSectorLines(projectile.position, projectile.radius, startAngle, endAngle, 8, Fade(WHITE, projectile.lifeTime * 10));
         }
         // Explosion visual (type 2, damage=0 means it's the visual effect)
-        else if (b.type == 2 && b.damage == 0) {
-            DrawCircleLines(b.pos.x, b.pos.y, b.angle, Fade(ORANGE, b.lifetime * 5));
-            DrawCircleV(b.pos, b.angle * 0.3f, Fade(ORANGE, b.lifetime * 3));
+        else if (projectile.type == 2 && projectile.damage == 0) {
+            DrawCircleLines(projectile.position.x, projectile.position.y, projectile.angle, Fade(ORANGE, projectile.lifeTime * 5));
+            DrawCircleV(projectile.position, projectile.angle * 0.3f, Fade(ORANGE, projectile.lifeTime * 3));
         }
         // Normal projectiles
         else {
-            DrawCircleV(b.pos, b.radius, b.color);
+            DrawCircleV(projectile.position, projectile.radius, projectile.color);
         }
     }
 }

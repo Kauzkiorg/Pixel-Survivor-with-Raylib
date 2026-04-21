@@ -5,11 +5,11 @@
 #include "raylib.h"
 #include <vector>
 
-// Simple projectile structure
-struct WeaponBullet {
-    Vector2 pos;
-    Vector2 vel;
-    float lifetime;
+// Simple projectile structure for visual effects
+struct WeaponProjectile {
+    Vector2 position;
+    Vector2 velocity;
+    float lifeTime;
     float radius;
     int damage;
     Color color;
@@ -17,15 +17,13 @@ struct WeaponBullet {
     float angle;      // For sword direction or explosion radius
 };
 
-// Simple Weapon class with all weapons in one class
+// Simple Weapon class - only 2 stats: damage and cooldown
 class Weapon {
 private:
-    float cooldown;      // Time between attacks
-    int damage;          // Base damage
-    float speed;         // Projectile speed
-    float range;         // Attack range
-    int weaponType;      // 0: Sword, 1: MagicWand, 2: Knife, 3: SpellBook
-    float timer;         // Current cooldown timer
+    int weaponDamage;          // How much damage the weapon deals
+    float attackCooldown;      // Time between attacks (seconds)
+    int weaponType;            // 0: Sword, 1: MagicWand, 2: Knife, 3: SpellBook
+    float currentCooldownTimer; // Current cooldown timer
 
 public:
     // Constructor - just pass the weapon type
@@ -33,7 +31,7 @@ public:
     
     // Update weapon (handles cooldown and attacks)
     void update(Player& player, const std::vector<Enemy*>& enemies, 
-                std::vector<WeaponBullet>& bullets, Vector2 targetPos, bool isAttacking);
+                std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition, bool isAttacking);
     
     // Getters
     int getWeaponType() const { return weaponType; }
@@ -42,10 +40,9 @@ public:
 private:
     // Internal attack method
     void attack(Player& player, const std::vector<Enemy*>& enemies,
-                std::vector<WeaponBullet>& bullets, Vector2 targetPos);
+                std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition);
 };
 
-// Global functions for bullet management
-void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, 
-                   std::vector<Enemy*>& enemies, float dt);
-void drawBullets(const std::vector<WeaponBullet>& bullets);
+// Global functions for projectile management
+void updateProjectiles(std::vector<WeaponProjectile>& projectiles, std::vector<Enemy*>& enemies, float deltaTime);
+void drawProjectiles(const std::vector<WeaponProjectile>& projectiles);

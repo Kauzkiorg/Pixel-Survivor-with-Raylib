@@ -36,7 +36,7 @@ int main() {
     vector<Enemy*> enemies;
     vector<Bullet*> bullets;
     vector<Item*> items;
-    vector<WeaponBullet> weaponBullets; // Weapon bullet system
+    vector<WeaponProjectile> weaponProjectiles; // Weapon projectile system
     float enemyFireTimer=0; // Track cooldown for ranged enemies
     float spawnTimer = 0.0f; // Track time for spawning enemies
     float gameTimer = 0.0f; // Track total survival time
@@ -89,8 +89,8 @@ int main() {
         bool isAttacking = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
         // Update weapons
-        currentWeapon->update(player, enemies, weaponBullets, attackTarget, isAttacking);
-        updateBullets(player, weaponBullets, enemies, dt);
+        currentWeapon->update(player, enemies, weaponProjectiles, attackTarget, isAttacking);
+        updateProjectiles(weaponProjectiles, enemies, dt);
 
         // Update
         for (auto e : entities) e->update();
@@ -268,7 +268,7 @@ int main() {
         BeginDrawing();
         ClearBackground(BLACK);
         for (auto e : entities) e->draw();
-        drawBullets(weaponBullets); // Draw weapon bullets
+        drawProjectiles(weaponProjectiles); // Draw weapon projectiles
         
         // Draw current weapon name
         DrawText(TextFormat("Weapon: %s (1-4 to switch)", currentWeapon->getName()), 10, 105, 15, GREEN);
