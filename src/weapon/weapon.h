@@ -5,27 +5,21 @@
 #include "raylib.h"
 #include <vector>
 
+// A simple structure to represent any projectile or visual effect
 struct WeaponBullet {
     Vector2 pos;
     Vector2 vel;
-    Vector2 startPos;
     float lifetime;
     float radius;
-    float innerRadius;
-    float length;
-    float angle;
-    float sweepAngle;
     int damage;
     int pierce;
-    bool affectedByGravity;
-    bool isBoomerang;
-    bool isReturning;
-    bool visualOnly;
-    bool isSwordSlash;
-    float maxTravelDistance;
-    float returnSpeed;
     Color color;
+    int type;         // 0: Normal, 1: Boomerang, 2: Orbital, 3: Sword
+    float angle;      // Used for orbital rotation and boomerang spiral
+    float distance;   // Current distance from player for orbital/boomerang
+    bool returning;   // For boomerang
 };
+
 
 class Weapon {
 protected:
@@ -70,12 +64,24 @@ public:
         Vector2 targetPos) override;
 };
 
-class Boomerang : public Weapon {
+class SpellBook : public Weapon {
 public:
-    Boomerang();
+    SpellBook();
     void attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
         Vector2 targetPos) override;
 };
+
+class OrbitalShield : public Weapon {
+private:
+    bool spawned;
+public:
+    OrbitalShield();
+    void update(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
+        Vector2 targetPos, bool isAttacking) override;
+    void attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
+        Vector2 targetPos) override;
+};
+
 
 void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, std::vector<Enemy*>& enemies, float dt);
 void drawBullets(const std::vector<WeaponBullet>& bullets);

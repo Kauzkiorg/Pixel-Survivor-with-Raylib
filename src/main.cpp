@@ -50,7 +50,7 @@ int main() {
     Sword sword;
     MagicWand magicWand;
     Knife knife;
-    Boomerang boomerang;
+    SpellBook spellBook;
     Weapon* currentWeapon = &sword; // Start with sword
 
     while (!WindowShouldClose()) {
@@ -83,7 +83,7 @@ int main() {
         if (IsKeyPressed(KEY_ONE)) currentWeapon = &sword;
         if (IsKeyPressed(KEY_TWO)) currentWeapon = &magicWand;
         if (IsKeyPressed(KEY_THREE)) currentWeapon = &knife;
-        if (IsKeyPressed(KEY_FOUR)) currentWeapon = &boomerang;
+        if (IsKeyPressed(KEY_FOUR)) currentWeapon = &spellBook;
 
         Vector2 attackTarget = GetMousePosition();
         bool isAttacking = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
@@ -274,7 +274,7 @@ int main() {
         const char* weaponName = "Sword";
         if (currentWeapon == &magicWand) weaponName = "Magic Wand";
         else if (currentWeapon == &knife) weaponName = "Knife";
-        else if (currentWeapon == &boomerang) weaponName = "Boomerang";
+        else if (currentWeapon == &spellBook) weaponName = "Spell Book";
         DrawText(TextFormat("Weapon: %s (1-4 to switch)", weaponName), 10, 105, 15, GREEN);
         
         DrawFPS(10, 10);

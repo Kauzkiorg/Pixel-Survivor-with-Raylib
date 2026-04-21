@@ -1,48 +1,20 @@
 #include "weapon.h"
+#include "raylib.h"
 #include <cmath>
 #include <algorithm>
 
-// Helper: distance between two points
-static float dist(Vector2 a, Vector2 b) {
-    return sqrtf((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-}
-
-// Helper: normalize a vector
+// Helper to normalize a vector for movement
 static Vector2 normalize(Vector2 v) {
     float len = sqrtf(v.x * v.x + v.y * v.y);
     if (len == 0) return {0, 0};
     return {v.x / len, v.y / len};
 }
 
-static float dot(Vector2 a, Vector2 b) {
-    return a.x * b.x + a.y * b.y;
-}
-
-static WeaponBullet makeBullet(const Vector2& pos, const Vector2& vel, float lifetime, int damage,
-    int pierce, bool affectedByGravity, bool isBoomerang, float maxTravelDistance, float returnSpeed,
-    Color color, float radius = 4.0f, bool visualOnly = false, bool isSwordSlash = false,
-    float length = 0.0f, float angle = 0.0f, float innerRadius = 0.0f, float sweepAngle = 0.0f) {
-    WeaponBullet bullet;
-    bullet.pos = pos;
-    bullet.vel = vel;
-    bullet.startPos = pos;
-    bullet.lifetime = lifetime;
-    bullet.radius = radius;
-    bullet.innerRadius = innerRadius;
-    bullet.length = length;
-    bullet.angle = angle;
-    bullet.sweepAngle = sweepAngle;
-    bullet.damage = damage;
-    bullet.pierce = pierce;
-    bullet.affectedByGravity = affectedByGravity;
-    bullet.isBoomerang = isBoomerang;
-    bullet.isReturning = false;
-    bullet.visualOnly = visualOnly;
-    bullet.isSwordSlash = isSwordSlash;
-    bullet.maxTravelDistance = maxTravelDistance;
-    bullet.returnSpeed = returnSpeed;
-    bullet.color = color;
-    return bullet;
+// Helper to calculate distance between two points
+static float Vector2Dist(Vector2 a, Vector2 b) {
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    return sqrtf(dx * dx + dy * dy);
 }
 
 // Weapon base class
@@ -53,14 +25,8 @@ Weapon::Weapon(int dmg, float rate, float speed, float rng, float life, int p)
 void Weapon::update(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
     Vector2 targetPos, bool isAttacking) {
     timer += GetFrameTime();
+    // Simple cooldown check
     if (isAttacking && timer >= fireRate) {
-        if (dynamic_cast<Boomerang*>(this) != nullptr) {
-            for (const WeaponBullet& bullet : bullets) {
-                if (bullet.isBoomerang) {
-                    return;
-                }
-            }
-        }
         timer = 0;
         attack(player, enemies, bullets, targetPos);
     }
@@ -71,53 +37,43 @@ void Weapon::setStats(int dmg, float rate, float speed, float rng, float life, i
     range = rng; lifetime = life; pierce = p;
 }
 
-// Sword - Temporary rotating swipe
-Sword::Sword() : Weapon(10, 0.45f, 0, 170, 0.18f, 0) {}
+// Sword - 45 degree cone attack towards target
+Sword::Sword() : Weapon(15, 0.5f, 0, 80, 0.1f, 999) {}
 
 void Sword::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
     Vector2 targetPos) {
     Vector2 playerPos = {player.getX(), player.getY()};
-    Vector2 slashDir = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
-    if (slashDir.x == 0 && slashDir.y == 0) {
-        slashDir = player.getFacingDir();
-    }
-
-    const float minReach = 28.0f;
-    const float swipeAngle = 45.0f * DEG2RAD;
-    const float halfSwipeAngle = swipeAngle * 0.5f;
-    const float swingThickness = 14.0f;
-    float baseAngle = atan2f(slashDir.y, slashDir.x);
-
-    bool hitEnemy = false;
+    
+    // Calculate direction to target (click position)
+    Vector2 toTarget = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
+    
+    // 45 degree cone = 22.5 degrees on each side
+    // cos(22.5) ≈ 0.924
+    float coneThreshold = 0.924f;
+    
+    // Check enemies within range AND within 45 degree cone
     for (Enemy* enemy : enemies) {
-        if (enemy == nullptr) continue;
-
         Vector2 enemyPos = {enemy->getX(), enemy->getY()};
-        Vector2 toEnemy = {enemyPos.x - playerPos.x, enemyPos.y - playerPos.y};
-        float enemyDist = dist(playerPos, enemyPos);
-        if (enemyDist < minReach || enemyDist > range + swingThickness) continue;
-
-        float enemyAngle = atan2f(toEnemy.y, toEnemy.x);
-        float angleDiff = enemyAngle - baseAngle;
-        while (angleDiff > PI) angleDiff -= 2 * PI;
-        while (angleDiff < -PI) angleDiff += 2 * PI;
-
-        if (fabsf(angleDiff) <= halfSwipeAngle) {
-            enemy->takeDamage(damage + player.getDamage());
-            hitEnemy = true;
+        float dist = Vector2Dist(playerPos, enemyPos);
+        
+        if (dist <= range) {
+            // Calculate direction to enemy
+            Vector2 toEnemy = normalize({enemyPos.x - playerPos.x, enemyPos.y - playerPos.y});
+            
+            // Dot product to check angle
+            float dot = toTarget.x * toEnemy.x + toTarget.y * toEnemy.y;
+            
+            // If enemy is within the 45 degree cone, damage it
+            if (dot >= coneThreshold) {
+                enemy->takeDamage(damage + player.getDamage());
+            }
         }
     }
 
-    float startAngle = (baseAngle - halfSwipeAngle) * RAD2DEG;
-    WeaponBullet slash = makeBullet(playerPos, {0, 0}, lifetime, 0, 0, false, false, lifetime, 0.0f,
-        hitEnemy ? GOLD : YELLOW, swingThickness, true, true, range, startAngle,
-        minReach, swipeAngle * RAD2DEG);
-    slash.startPos = playerPos;
-    slash.pos = {
-        playerPos.x + cosf(baseAngle - halfSwipeAngle) * range,
-        playerPos.y + sinf(baseAngle - halfSwipeAngle) * range
-    };
-    bullets.push_back(slash);
+    // Create a visual effect for the slash (store the attack direction in angle field)
+    float attackAngle = atan2(toTarget.y, toTarget.x);
+    // Order: pos, vel, lifetime, radius, damage, pierce, color, type, angle, distance, returning
+    bullets.push_back({playerPos, {0,0}, 0.1f, range, 0, 0, YELLOW, 3, attackAngle, 0.0f, false});
 }
 
 // Magic Wand - Auto-target nearest enemy
@@ -125,31 +81,23 @@ MagicWand::MagicWand() : Weapon(8, 0.8f, 300, 400, 2.0f, 1) {}
 
 void MagicWand::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
     Vector2 targetPos) {
-    if (enemies.empty()) return;
-    
-    Vector2 playerPos = {player.getX(), player.getY()};
     Enemy* nearest = nullptr;
-    float minDist = range + 1.0f;
-    
+    float minDist = range;
+    Vector2 playerPos = {player.getX(), player.getY()};
+
     // Find nearest enemy
     for (Enemy* enemy : enemies) {
-        if (enemy == nullptr) continue;
-
-        float d = dist(playerPos, {enemy->getX(), enemy->getY()});
-        if (d <= range && d < minDist) {
+        float d = Vector2Dist(playerPos, {enemy->getX(), enemy->getY()});
+        if (d < minDist) {
             minDist = d;
             nearest = enemy;
         }
     }
-    
-    if (nearest == nullptr) return;
-    
-    // Shoot projectile toward nearest enemy
-    Vector2 enemyTarget = {nearest->getX(), nearest->getY()};
-    Vector2 dir = normalize({enemyTarget.x - playerPos.x, enemyTarget.y - playerPos.y});
-    
-    bullets.push_back(makeBullet(playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed},
-        lifetime, damage + player.getDamage(), pierce, false, false, range, projectileSpeed, PURPLE));
+
+    if (nearest) {
+        Vector2 dir = normalize({nearest->getX() - playerPos.x, nearest->getY() - playerPos.y});
+        bullets.push_back({playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed}, lifetime, 6.0f, damage + player.getDamage(), pierce, PURPLE});
+    }
 }
 
 // Knife - Shoots straight forward
@@ -159,123 +107,90 @@ void Knife::attack(Player& player, const std::vector<Enemy*>& enemies, std::vect
     Vector2 targetPos) {
     Vector2 playerPos = {player.getX(), player.getY()};
     Vector2 dir = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
-    if (dir.x == 0 && dir.y == 0) {
-        dir = player.getFacingDir();
-    }
-    
-    bullets.push_back(makeBullet(playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed},
-        lifetime, damage + player.getDamage(), pierce, false, false, range, projectileSpeed, SKYBLUE));
+    bullets.push_back({playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed}, lifetime, 4.0f, damage + player.getDamage(), pierce, SKYBLUE});
 }
 
-// Boomerang projectile
-Boomerang::Boomerang() : Weapon(15, 1.2f, 440, 240, 2.2f, 3) {}
+// SpellBook - Fires spells that explode on contact with enemies
+SpellBook::SpellBook() : Weapon(20, 1.0f, 400, 500, 2.0f, 1) {}
 
-void Boomerang::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
+void SpellBook::attack(Player& player, const std::vector<Enemy*>& enemies, std::vector<WeaponBullet>& bullets,
     Vector2 targetPos) {
     Vector2 playerPos = {player.getX(), player.getY()};
-
     Vector2 dir = normalize({targetPos.x - playerPos.x, targetPos.y - playerPos.y});
-    if (dir.x == 0 && dir.y == 0) {
-        dir = player.getFacingDir();
-    }
-    bullets.push_back(makeBullet(playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed},
-        lifetime, damage + player.getDamage(), pierce, false, true, range, projectileSpeed * 2.0f,
-        ORANGE, 14.0f));
+    // Order: pos, vel, lifetime, radius, damage, pierce, color, type, angle, distance, returning
+    // type=4 for spell (explosive), angle=explosion radius, distance=unused, returning=false
+    bullets.push_back({playerPos, {dir.x * projectileSpeed, dir.y * projectileSpeed}, lifetime, 8.0f, damage + player.getDamage(), pierce, PURPLE, 4, 150.0f, 0.0f, false});
 }
 
-// Update bullets (move, apply gravity, check collisions)
+// Update all active bullets
 void updateBullets(Player& player, std::vector<WeaponBullet>& bullets, std::vector<Enemy*>& enemies, float dt) {
     for (int i = (int)bullets.size() - 1; i >= 0; i--) {
-        WeaponBullet& b = bullets[i];
-
-        if (b.isSwordSlash) {
-            b.startPos = {player.getX(), player.getY()};
-            float totalLifetime = b.maxTravelDistance;
-            float elapsed = totalLifetime - b.lifetime;
-            float progress = (totalLifetime > 0.0f) ? elapsed / totalLifetime : 1.0f;
-            if (progress < 0.0f) progress = 0.0f;
-            if (progress > 1.0f) progress = 1.0f;
-
-            float currentAngle = b.angle + b.sweepAngle * progress;
-            float currentAngleRad = currentAngle * DEG2RAD;
-            b.pos = {
-                b.startPos.x + cosf(currentAngleRad) * b.length,
-                b.startPos.y + sinf(currentAngleRad) * b.length
-            };
-        }
-
-        if (b.isBoomerang) {
-            if (!b.isReturning && dist(b.pos, b.startPos) >= b.maxTravelDistance) {
-                b.isReturning = true;
-            }
-
-            if (b.isReturning) {
-                Vector2 playerPos = {player.getX(), player.getY()};
-                Vector2 returnDir = normalize({playerPos.x - b.pos.x, playerPos.y - b.pos.y});
-                b.vel = {returnDir.x * b.returnSpeed, returnDir.y * b.returnSpeed};
-            }
-        }
-
-        if (b.affectedByGravity) {
-            b.vel.y += 400 * dt;
-        }
+        bullets[i].pos.x += bullets[i].vel.x * dt;
+        bullets[i].pos.y += bullets[i].vel.y * dt;
+        bullets[i].lifetime -= dt;
         
-        if (!b.visualOnly) {
-            b.pos.x += b.vel.x * dt;
-            b.pos.y += b.vel.y * dt;
-        }
-        
-        // Decrease lifetime
-        b.lifetime -= dt;
-        
-        // Check collision with enemies
+        // Collision check
         for (int j = (int)enemies.size() - 1; j >= 0; j--) {
-            Enemy* enemy = enemies[j];
-            if (enemy == nullptr) continue;
-
-            Vector2 enemyPos = {enemy->getX(), enemy->getY()};
-            if (!b.visualOnly && dist(b.pos, enemyPos) < b.radius + 11.0f) {
-                enemy->takeDamage(b.damage);
-                if (!b.isBoomerang) {
-                    b.pierce--;
+            if (bullets[i].damage > 0 && CheckCollisionCircles(bullets[i].pos, bullets[i].radius, {enemies[j]->getX(), enemies[j]->getY()}, 10)) {
+                // Direct hit damage
+                enemies[j]->takeDamage(bullets[i].damage);
+                
+                // Handle spell explosion (type 4)
+                if (bullets[i].type == 4) {
+                    float explosionRadius = bullets[i].angle; // angle field stores explosion radius for spells
+                    
+                    // Deal explosion damage to all enemies within radius
+                    for (int k = 0; k < (int)enemies.size(); k++) {
+                        if (k != j) { // Don't damage the same enemy twice
+                            Vector2 enemyPos = {enemies[k]->getX(), enemies[k]->getY()};
+                            float distToExplosion = Vector2Dist(bullets[i].pos, enemyPos);
+                            
+                            if (distToExplosion <= explosionRadius) {
+                                // Deal half damage as explosion damage
+                                enemies[k]->takeDamage(bullets[i].damage / 2);
+                            }
+                        }
+                    }
+                    
+                    // Create explosion visual effect
+                    WeaponBullet explosion = {bullets[i].pos, {0,0}, 0.3f, 0, 0, 0, ORANGE, 4, explosionRadius, 0.0f, false};
+                    bullets.push_back(explosion);
                 }
-
-                if (b.pierce <= 0) {
-                    b.lifetime = 0; // Mark for removal
+                
+                bullets[i].pierce--;
+                if (bullets[i].pierce <= 0) {
+                    bullets[i].lifetime = 0;
                     break;
                 }
             }
         }
 
-        if (b.isBoomerang && b.isReturning) {
-            Vector2 playerPos = {player.getX(), player.getY()};
-            if (dist(b.pos, playerPos) < 18) {
-                b.lifetime = 0;
-            }
-        }
-
-        // Remove if lifetime expired
-        if (b.lifetime <= 0) {
-            bullets.erase(bullets.begin() + i);
-        }
+        if (bullets[i].lifetime <= 0) bullets.erase(bullets.begin() + i);
     }
 }
 
-// Draw bullets
 void drawBullets(const std::vector<WeaponBullet>& bullets) {
     for (const auto& b : bullets) {
-        if (b.isSwordSlash) {
-            Vector2 dir = normalize({b.pos.x - b.startPos.x, b.pos.y - b.startPos.y});
-            Vector2 innerPoint = {
-                b.startPos.x + dir.x * b.innerRadius,
-                b.startPos.y + dir.y * b.innerRadius
-            };
-            DrawLineEx(innerPoint, b.pos, b.radius, Fade(b.color, 0.38f));
-            DrawCircleV(innerPoint, b.radius * 0.45f, Fade(b.color, 0.25f));
-            DrawCircleV(b.pos, b.radius * 0.55f, Fade(b.color, 0.55f));
-            continue;
+        // Type 3 = Sword visual effect - draw 45-degree arc/sector
+        if (b.type == 3) {
+            // Convert angle from radians to degrees
+            float angleDeg = b.angle * (180.0f / 3.14159265f);
+            float startAngle = angleDeg - 22.5f; // 22.5 degrees on each side = 45 total
+            float endAngle = angleDeg + 22.5f;
+            
+            // Draw filled sector for sword slash
+            DrawCircleSector(b.pos, b.radius, startAngle, endAngle, 8, Fade(YELLOW, b.lifetime * 10));
+            DrawCircleSectorLines(b.pos, b.radius, startAngle, endAngle, 8, Fade(WHITE, b.lifetime * 10));
         }
-
-        DrawCircleV(b.pos, b.radius, b.color);
+        // Type 4 = Spell explosion - draw explosion circle
+        else if (b.type == 4 && b.damage == 0) {
+            // Draw explosion ring (when spell has exploded, damage is set to 0 after hit)
+            DrawCircleLines(b.pos.x, b.pos.y, b.angle, Fade(ORANGE, b.lifetime * 5));
+            DrawCircleV(b.pos, b.angle * 0.3f, Fade(ORANGE, b.lifetime * 3));
+        }
+        // Normal projectiles
+        else {
+            DrawCircleV(b.pos, b.radius, b.color);
+        }
     }
 }
