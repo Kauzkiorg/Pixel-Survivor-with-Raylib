@@ -102,7 +102,7 @@ int main() {
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
         spawnTimer += GetFrameTime();
-        if (spawnTimer >= 0.1f) {
+        if (spawnTimer >= 1.0f) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
@@ -118,7 +118,7 @@ int main() {
         else if(r < 90) {
             type = 1; // 20% chance for TANK
         }
-        }
+        
         else {
             type = 3; // 10% chance for RANGED
         } 
@@ -263,6 +263,9 @@ int main() {
                 j--;
             }
         }
+        //sheild
+        skill->triggerShieldCollision(enemies);
+
 
         // Item collection
         for (size_t k =0; k < items.size(); k++){
@@ -319,10 +322,12 @@ int main() {
         } else {
             DrawText("LASER READY! (Right Click)", 10, 100, 20, GREEN);
         }
+        
         EndDrawing();
     }
 
     CloseWindow();
     return 0;
+
 }
  

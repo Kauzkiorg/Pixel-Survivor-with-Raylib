@@ -1,6 +1,7 @@
 #include "Skill.h"
 #include <cmath> // 
 #include "../enemy/Enemy.h"
+#include <algorithm>
 static constexpr float LASER_MAX_CD = 5.0f;
 
 Skill::Skill(Player* p) : player(p) {
@@ -10,7 +11,7 @@ Skill::Skill(Player* p) : player(p) {
     angle = 0.0f;
     num_particles = 1;  // start with 1 ball, will increase as player gains EXP
     selfRotation=0.0f;
-    shurikenTexture=LoadTexture("./shuriken.png");
+    shurikenTexture=LoadTexture("Graphics/shuriken.png");
     //laser
     is_laser_active = false;
     laser_timer=0.0f;
@@ -21,7 +22,12 @@ Skill::Skill(Player* p) : player(p) {
     thunder_cooldown=5.0f;
     thunder_level=0;
     thunder_damage=30.0f;
-    thunderTexture=LoadTexture("./thunderdungdung.png");
+    thunderTexture=LoadTexture("Graphics/thunderdungdung.png");
+    //sheild
+    shieldTexture = LoadTexture("Graphics/shield.png"); // Đổi tên file ảnh mày gửi thành shield.png
+    shield_timer = 0;
+    lv_shield = 1;
+    UnloadTexture(shieldTexture);
 }
 
 void Skill::activateLaser(Vector2 mousePos) {
@@ -66,6 +72,35 @@ void Skill::update() {
     if(thunder_level > 4) thunder_level = 4;
     thunder_damage = 30.0f + (thunder_level * 10.0f);
     thunder_timer += GetFrameTime();
+    //sheild
+    float dt = GetFrameTime();
+    float cooldown = (lv_shield >= 5) ? 3.0f : 5.0f;
+    shield_timer += GetFrameTime();
+    // 1. Spawn Khiên
+    if (shield_timer >= cooldown) {
+        int num = (lv_shield >= 4) ? 3 : (lv_shield >= 3 ? 2 : 1);
+        for (int i = 0; i < num; i++) {
+            float angle = GetRandomValue(0, 360) * (PI / 180.0f);
+            float speedVal = 350.0f;
+            float r = (lv_shield == 2 || lv_shield >= 5) ? 25.0f : 15.0f;
+            activeShields.push_back({{x, y}, {cos(angle)*speedVal, sin(angle)*speedVal}, 0, true, r, 0});
+        }
+        shield_timer = 0;
+    }
+
+    // 2. Di chuyển và Nảy cạnh màn hình
+    for (auto& s : activeShields) {
+        if (!s.active) continue;
+        s.pos.x += s.speed.x * dt;
+        s.pos.y += s.speed.y * dt;
+        s.rotation += 500.0f * dt; // Xoay khiên
+
+        if (s.pos.x < 0 || s.pos.x > 800) { s.speed.x *= -1; s.bounces++; }
+        if (s.pos.y < 0 || s.pos.y > 600) { s.speed.y *= -1; s.bounces++; }
+
+        int maxB = (lv_shield >= 5) ? 5 : 3;
+        if (s.bounces >= maxB) s.active = false;
+    }
 }
 void Skill::triggerThunder(std::vector<Enemy*>& enemies){
     if(enemies.empty()||thunder_timer< thunder_cooldown) return; // Nếu không có kẻ địch hoặc chưa hết cooldown thì không kích hoạt
@@ -106,6 +141,34 @@ void Skill::triggerThunder(std::vector<Enemy*>& enemies){
     }
     thunder_timer=0.0f; // Reset timer sau khi kích hoạt
 }
+void Skill::triggerShieldCollision(std::vector<Enemy*>& enemies) {
+    for (auto& s : activeShields) {
+        if (!s.active) continue;
+        for (auto e : enemies) {
+            float dx = s.pos.x - e->getX();
+            float dy = s.pos.y - e->getY();
+            float d = sqrt(dx*dx + dy*dy);
+
+            if (d < s.radius + 15.0f) {
+                int dmg = (lv_shield >= 2) ? 40 : 20;
+                e->takeDamage(dmg);
+                
+                // Logic nảy lại
+                s.speed.x *= -1.0f; 
+                s.speed.y *= -1.0f;
+                s.bounces++;
+                
+                // Nếu nảy đủ số lần thì cho biến mất
+                int maxB = (lv_shield >= 5) ? 5 : 3;
+                if (s.bounces >= maxB) s.active = false;
+
+                break;
+            }
+        }
+    }
+    activeShields.erase(std::remove_if(activeShields.begin(), activeShields.end(), 
+        [](const Shield& s){ return !s.active; }), activeShields.end());
+}
 
 void Skill::draw() {
     if (type == SkillType::AUTO_BALLS) {
@@ -130,11 +193,20 @@ void Skill::draw() {
                 }
         }
             //draw laser
-            if(is_laser_active){
-                DrawLineEx({x, y}, {x + laser_direction.x * laser_length, y + laser_direction.y * laser_length}, 15, SKYBLUE);
-                DrawLineEx({x, y}, {x + laser_direction.x * laser_length, y + laser_direction.y * laser_length}, 5, WHITE); // Hiệu ứng lõi trắng
-
-            }
+            
         }
+    if(is_laser_active){
+            DrawLineEx({x, y}, {x + laser_direction.x * laser_length, y + laser_direction.y * laser_length}, 15, SKYBLUE);
+            DrawLineEx({x, y}, {x + laser_direction.x * laser_length, y + laser_direction.y * laser_length}, 5, WHITE); // Hiệu ứng lõi trắng
+
+        }
+    for (auto& s : activeShields) {
+    if (s.active && shieldTexture.id > 0) {
+        Rectangle src = {0, 0, (float)shieldTexture.width, (float)shieldTexture.height};
+        Rectangle dest = {s.pos.x, s.pos.y, s.radius * 2.8f, s.radius * 2.8f};
+        Vector2 origin = {(s.radius * 2.8f)/2, (s.radius * 2.8f)/2};
+        DrawTexturePro(shieldTexture, src, dest, origin, s.rotation, WHITE);
+    }
+    }
     }
 

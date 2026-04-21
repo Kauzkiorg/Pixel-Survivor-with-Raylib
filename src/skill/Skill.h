@@ -29,6 +29,18 @@ private:
     int thunder_level;
     float thunder_damage;
     Texture2D thunderTexture; // texture cho hiệu ứng sét đánh
+    struct Shield {
+        Vector2 pos;
+        Vector2 speed;
+        int bounces;
+        bool active;
+        float radius;
+        float rotation; // Để khiên xoay tròn khi bay nhìn cho đẹp
+    };
+    std::vector<Shield> activeShields;
+    int lv_shield = 1;      
+    float shield_timer = 0;
+    Texture2D shieldTexture; 
 public:
     //Constructor
     Skill(Player* p);
@@ -42,6 +54,7 @@ public:
         UnloadTexture(thunderTexture);
     }
     void triggerThunder(std::vector<Enemy*>& enemies);//thunder strike
+    void triggerShieldCollision(std::vector<Enemy*>& enemies);
     
     // Getters
     float getAngle() const { return angle; }
