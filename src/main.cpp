@@ -102,7 +102,7 @@ int main() {
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
         spawnTimer += GetFrameTime();
-        if (spawnTimer >= 0.00001f) {
+        if (spawnTimer >= 0.5f) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
@@ -204,24 +204,19 @@ int main() {
                 removeEnemy(entities, enemies, i); // delete enemy and remove from entities list
             }
             // Laser Beam - Enemy collisions
+            skill->activateLaser(enemies); 
+
+            // Logic gây damage laser (giữ nguyên đoạn CheckCollisionCircleLine của mày)
             if (skill->isLaserActive()) {
                 for (int i = (int)enemies.size() - 1; i >= 0; i--) {
-                    // Điểm đầu và điểm cuối của tia Laser
                     Vector2 startPos = { skill->getX(), skill->getY() };
-                    Vector2 mousePos = GetMousePosition();
-                    float dx = mousePos.x - startPos.x;
-                    float dy = mousePos.y - startPos.y;
-                    float len = sqrt(dx*dx + dy*dy);
-                    Vector2 laserDir = { dx/len, dy/len };
                     Vector2 endPos = { 
-                        startPos.x + laserDir.x * 400, 
-                        startPos.y + laserDir.y * 400 
+                        startPos.x + skill->getLaserDirection().x * 400, 
+                        startPos.y + skill->getLaserDirection().y * 400 
                     };
 
-                    // Dùng hàm có sẵn của Raylib để check va chạm giữa đường thẳng và hình tròn (quái)
                     if (CheckCollisionCircleLine({enemies[i]->getX(), enemies[i]->getY()}, 15, startPos, endPos)) {
-                        enemies[i]->takeDamage(100); // Damage cực to để tiêu diệt ngay lập tức
-                        
+                        enemies[i]->takeDamage(100);
                         if (enemies[i]->getHp() <= 0) {
                             player.addExp(10);
                             removeEnemy(entities, enemies, i);
@@ -230,10 +225,7 @@ int main() {
                 }
             }
 
-            // Bấm phím để bắn (ví dụ chuột phải hoặc phím SPACE)
-            if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
-                skill->activateLaser(GetMousePosition());
-            }
+           
         }
 
         //thunder strike
@@ -317,12 +309,7 @@ int main() {
         int secs = (int)(gameTimer) % 60;
         // Display survival time in MM:SS format
         DrawText(TextFormat("Time: %02d:%02d", mins, secs), 330, 20, 25, WHITE);
-        if (skill->getLaserCooldown() > 0) {
-            DrawText(TextFormat("Laser CD: %.1fs", skill->getLaserCooldown()), 10, 100, 20, RED);
-        } else {
-            DrawText("LASER READY! (Right Click)", 10, 100, 20, GREEN);
-        }
-        
+      
         EndDrawing();
     }
 

@@ -30,31 +30,13 @@ Skill::Skill(Player* p) : player(p) {
     
 }
 
-
-
-void Skill::activateLaser(Vector2 mousePos) {
-    // Chỉ kích hoạt nếu tia laser cũ đã hết và đã hết thời gian hồi chiêu (5s)
-    if (!is_laser_active && laser_cooldown <= 0) {
-        is_laser_active = true;
-        laser_timer = 0.2f;   // Laser tồn tại 0.2s
-        laser_cooldown = LASER_MAX_CD; // Reset cooldown về 5 giây
-        
-        // Tính toán hướng bắn
-        float dx = mousePos.x - x;
-        float dy = mousePos.y - y;
-        float mag = sqrt(dx*dx + dy*dy);
-        laser_direction = { dx / mag, dy / mag };
-        // Nếu đang trong thời gian hồi chiêu, có thể hiển thị thông báo hoặc hiệu ứng nào đó
-        // Ví dụ: DrawText("Laser on cooldown!", 10, 10, 20, RED);      
-    }
-}
 void Skill::update() {
     // 1. logic bám theo người chơi và Auto_ball
     x = player->getX();
     y = player->getY();
     // Scale num_particles based on player level (1 particle per level, max 10)
     num_particles = 1 + (player->getLevel() - 1);
-    if (num_particles > 10) num_particles = 10;
+    if (num_particles > 5) num_particles = 5;
     angle += 2.5f * GetFrameTime();
     selfRotation += 15.0f * GetFrameTime(); // Tốc độ tự quay của skill
 
@@ -75,36 +57,90 @@ void Skill::update() {
     thunder_damage = 30.0f + (thunder_level * 10.0f);
     thunder_timer += GetFrameTime();
     //sheild
-    float dt = GetFrameTime();
-    float cooldown = (lv_shield >= 5) ? 3.0f : 5.0f;
-    shield_timer += GetFrameTime();
-    // 1. Spawn Khiên
-    if (shield_timer >= cooldown) {
-    int num = (lv_shield >= 4) ? 3 : (lv_shield >= 3 ? 2 : 1);
-    for (int i = 0; i < num; i++) {
-        float randomAngle = (float)GetRandomValue(0, 360) * (PI / 180.0f); 
-        float speedVal = 350.0f;
-        float r = (lv_shield == 2 || lv_shield >= 5) ? 25.0f : 15.0f;
-        
-        activeShields.push_back({{x, y}, {(float)cos(randomAngle)*speedVal, (float)sin(randomAngle)*speedVal}, 0, true, r, 0.0f});
+    lv_shield = player->getLevel();
+    float dt= GetFrameTime();
+    float cooldown=(lv_shield == 5) ? 5.0f : 7.0f; // Cooldown giảm khi shield đạt level 7
+    shield_timer+=dt;
+    if(shield_timer>=cooldown){
+        int num=1;
+        if(lv_shield >=3) num=2; // Khi shield đạt level 3 thì mỗi lần kích hoạt sẽ tạo 2 khiên
+        if(lv_shield >=4) num=3;
+        if(lv_shield >=5) num=4;
+        for(int i=0;i<num;i++){
+            float randomAngle=GetRandomValue(0,360)* (PI/180.0f);
+            float speedVal=350.0f;
+            float r=20.0f;
+            if(lv_shield >= 5) speedVal=400.0f;
+            activeShields.push_back({
+                {x,y},{(float)cos(randomAngle)*speedVal, (float)sin(randomAngle)*speedVal},0,true,r,0.0f
+            });
+        }
+        shield_timer=0.0f; // Reset timer sau khi tạo khiên mới
     }
-    shield_timer = 0;
+    for (auto& s:activeShields){
+        if(!s.active) continue;
+        s.pos.x+=s.speed.x*dt;
+        s.pos.y+=s.speed.y*dt;
+        s.rotation+=500.0f*dt;
+
+        if(s.pos.x<0||s.pos.x>800){s.speed.x*=-1.0f; s.bounces++;}
+        if(s.pos.y<0||s.pos.y>600){s.speed.y*=-1.0f; s.bounces++;}
+        int maxB=(lv_shield >= 5) ? 5 : 3;
+        if(s.bounces>=maxB) s.active=false;
+    }
+}
+void Skill::activateLaser(std::vector<Enemy*>& enemies) {
+    if (!is_laser_active && laser_cooldown <= 0) {
+        if (enemies.empty()) return;
+
+        Vector2 bestDir = { 1, 0 };
+        int maxKillCount = -1;
+
+        // DUYỆT QUA TỪNG CON QUÁI ĐỂ LẤY LÀM TÂM ĐIỂM NGẮM BẮN
+        for (auto target : enemies) {
+            // Tính hướng từ Player đến con quái mục tiêu này
+            Vector2 toTarget = { target->getX() - x, target->getY() - y };
+            float distToTarget = sqrtf(toTarget.x * toTarget.x + toTarget.y * toTarget.y);
+            
+            if (distToTarget > laser_length || distToTarget < 5.0f) continue;
+
+            // Chuẩn hóa hướng bắn (Normalize)
+            Vector2 currentDir = { toTarget.x / distToTarget, toTarget.y / distToTarget };
+            int currentKillCount = 0;
+
+            // QUÉT XEM HƯỚNG BẮN NÀY XIÊN ĐƯỢC THÊM BAO NHIÊU CON KHÁC
+            for (auto other : enemies) {
+                Vector2 toOther = { other->getX() - x, other->getY() - y };
+                float distToOther = sqrtf(toOther.x * toOther.x + toOther.y * toOther.y);
+                
+                if (distToOther > laser_length) continue;
+
+                // Dùng Dot Product để kiểm tra độ thẳng hàng
+                // Nếu dot xấp xỉ 1.0, nghĩa là con quái kia cũng nằm trên đường thẳng này
+                float dot = (toOther.x * currentDir.x + toOther.y * currentDir.y) / distToOther;
+
+                // 0.985f là góc cực hẹp (khoảng 10 độ), đảm bảo laser phải đi qua thân quái
+                if (dot > 0.985f) {
+                    currentKillCount++;
+                }
+            }
+
+            // Chọn hướng nào có khả năng "xiên" nhiều quái nhất
+            if (currentKillCount > maxKillCount) {
+                maxKillCount = currentKillCount;
+                bestDir = currentDir;
+            }
+        }
+
+        // Kích hoạt Laser với hướng tối ưu nhất đã tìm được
+        laser_direction = bestDir;
+        is_laser_active = true;
+        laser_timer = 0.2f;
+        laser_cooldown = LASER_MAX_CD;
+    }
 }
 
-    // 2. Di chuyển và Nảy cạnh màn hình
-    for (auto& s : activeShields) {
-        if (!s.active) continue;
-        s.pos.x += s.speed.x * dt;
-        s.pos.y += s.speed.y * dt;
-        s.rotation += 500.0f * dt; // Xoay khiên
 
-        if (s.pos.x < 0 || s.pos.x > 800) { s.speed.x *= -1; s.bounces++; }
-        if (s.pos.y < 0 || s.pos.y > 600) { s.speed.y *= -1; s.bounces++; }
-
-        int maxB = (lv_shield >= 5) ? 5 : 3;
-        if (s.bounces >= maxB) s.active = false;
-    }
-}
 void Skill::triggerThunder(std::vector<Enemy*>& enemies){
     if(enemies.empty()||thunder_timer< thunder_cooldown) return; // Nếu không có kẻ địch hoặc chưa hết cooldown thì không kích hoạt
     int num_bolts=1+thunder_level;
@@ -206,9 +242,14 @@ void Skill::draw() {
     for (auto& s : activeShields) {
         if (s.active && shieldTexture.id > 0) {
             Rectangle src = {0, 0, (float)shieldTexture.width, (float)shieldTexture.height};
-            float drawSize = s.radius * 2.8f;
+        
+            // Vẽ to hơn bán kính va chạm một chút để đẹp
+            float drawSize = s.radius * 3.0f; 
             Rectangle dest = {s.pos.x, s.pos.y, drawSize, drawSize};
-            Vector2 origin = {drawSize / 2.0f, drawSize / 2.0f};
+            
+            // Tâm xoay PHẢI nằm ở giữa drawSize
+            Vector2 origin = {drawSize / 2.0f, drawSize / 2.0f}; 
+            
             DrawTexturePro(shieldTexture, src, dest, origin, s.rotation, WHITE);
         }
     }

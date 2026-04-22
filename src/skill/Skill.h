@@ -54,6 +54,8 @@ public:
         UnloadTexture(thunderTexture);
         UnloadTexture(shieldTexture);
     }
+    void activateLaser(std::vector<Enemy*>& enemies); // Đổi mousePos thành enemies
+    Vector2 getLaserDirection() const { return laser_direction; } // Thêm getter này để main.cpp dùng
     void triggerThunder(std::vector<Enemy*>& enemies);//thunder strike
     void triggerShieldCollision(std::vector<Enemy*>& enemies);
     
