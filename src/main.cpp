@@ -76,6 +76,11 @@ int main() {
         }
         gameTimer += GetFrameTime(); // Update game timer
 
+        // Convert mouse position from screen coordinates to world coordinates
+        Vector2 mouseScreenPos = GetMousePosition();
+        Vector2 attackTarget = GetScreenToWorld2D(mouseScreenPos, player.getCamera());
+        bool isAttacking = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        
         // Update
         for (auto e : entities) e->update();
         // RANGED ENEMY LOGIC (Type 3)
