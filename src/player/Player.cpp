@@ -10,6 +10,12 @@ Player::Player() {
     score = 0;
     speed = 3.0f;
     damage = 10;
+    
+    // Initialize camera to follow the player
+    camera.target = (Vector2){ x, y };
+    camera.offset = (Vector2){ 400, 300 }; // Center of 800x600 screen
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
 }
 
 int Player::getExpToNextLevel() const {
@@ -50,6 +56,9 @@ void Player::update() {
     if (IsKeyDown(KEY_S)) y += speed;
     if (IsKeyDown(KEY_A)) x -= speed;
     if (IsKeyDown(KEY_D)) x += speed;
+    
+    // Update camera to follow the player
+    camera.target = (Vector2){ x, y };
 }
 
 void Player::draw() {

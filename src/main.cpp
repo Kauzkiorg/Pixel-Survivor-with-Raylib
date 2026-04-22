@@ -206,7 +206,7 @@ int main() {
             // Laser Beam - Enemy collisions
             skill->activateLaser(enemies); 
 
-            // Logic gây damage laser (giữ nguyên đoạn CheckCollisionCircleLine của mày)
+            // Logic gây damage laser (giữ nguyên đoạn CheckCollisionCircleLine )
             if (skill->isLaserActive()) {
                 for (int i = (int)enemies.size() - 1; i >= 0; i--) {
                     Vector2 startPos = { skill->getX(), skill->getY() };
@@ -258,7 +258,7 @@ int main() {
         //sheild
         skill->triggerShieldCollision(enemies);
 
-
+        //bua
         // Item collection
         for (size_t k =0; k < items.size(); k++){
             float dist = distance(player.getX(), player.getY(), items[k]->getX(), items[k]->getY());
@@ -304,7 +304,7 @@ int main() {
         DrawText(TextFormat("EXP: %d/%d", player.getExp(), player.getExpToNextLevel()), 330, 580, 20, SKYBLUE);
         
         DrawText(TextFormat("Score: %d", player.getScore()), 10, 80, 20, WHITE);
-        // Format time as MM:SS
+        // Format time as MM:Ss
         int mins = (int)(gameTimer / 60);
         int secs = (int)(gameTimer) % 60;
         // Display survival time in MM:SS format

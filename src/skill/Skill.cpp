@@ -27,7 +27,12 @@ Skill::Skill(Player* p) : player(p) {
     shieldTexture = LoadTexture("Graphics/khiendoitruongmy.png"); // Đổi tên file ảnh mày gửi thành shield.png
     shield_timer = 0;
     lv_shield = 1;
-    
+    //bua
+    hammerTexture = LoadTexture("Graphics/buathor.png"); //
+    axeTexture = LoadTexture("Graphics/riuthor.png");    //
+    hammer_timer = 0;
+    lv_hammer = 1;
+
 }
 
 void Skill::update() {
@@ -88,7 +93,48 @@ void Skill::update() {
         int maxB=(lv_shield >= 5) ? 5 : 3;
         if(s.bounces>=maxB) s.active=false;
     }
+    //bua
+    lv_hammer = player->getLevel(); // Cho level búa đi theo level player để test
+
+    // Cooldown giảm ở Level 3 và 4
+    float hammer_cd = 3.0f;
+    if (lv_hammer >= 3) hammer_cd = 2.0f;
+    if (lv_hammer >= 4) hammer_cd = 1.2f;
+    
+    hammer_timer += dt;
+
+    if (hammer_timer >= hammer_cd) {
+        int num = (lv_hammer >= 3) ? 2 : 1;
+        if (lv_hammer >= 4) num = 3;
+
+        for (int i = 0; i < num; i++) {
+            float angle = (GetRandomValue(0, 360) * PI / 180.0f);
+            float sVal = (lv_hammer >= 2) ? 550.0f : 400.0f; // Lv2 tăng tốc độ
+
+            activeHammers.push_back({
+                {x, y}, 
+                {cosf(angle) * sVal, sinf(angle) * sVal}, 
+                true, 0, (lv_hammer >= 5)
+            });
+        }
+        hammer_timer = 0;
+    }
+
+    for (auto& h : activeHammers) {
+        if (!h.active) continue;
+        h.pos.x += h.speed.x * dt;
+        h.pos.y += h.speed.y * dt;
+        h.rotation += 800.0f * dt; // Hiệu ứng xoay búa
+
+        // Biến mất khi bay ra khỏi màn hình
+        if (h.pos.x < -50 || h.pos.x > 850 || h.pos.y < -50 || h.pos.y > 650) h.active = false;
+    }
+
+    activeHammers.erase(std::remove_if(activeHammers.begin(), activeHammers.end(), 
+        [](const Hammer& h){ return !h.active; }), activeHammers.end());
 }
+    
+
 void Skill::activateLaser(std::vector<Enemy*>& enemies) {
     if (!is_laser_active && laser_cooldown <= 0) {
         if (enemies.empty()) return;
@@ -208,7 +254,20 @@ void Skill::triggerShieldCollision(std::vector<Enemy*>& enemies) {
     activeShields.erase(std::remove_if(activeShields.begin(), activeShields.end(), 
         [](const Shield& s){ return !s.active; }), activeShields.end());
 }
+void Skill::triggerHammerCollision(std::vector<Enemy*>& enemies) {
+    for (auto& h : activeHammers) {
+        if (!h.active) continue;
+        for (auto e : enemies) {
+            float d = sqrtf(powf(h.pos.x - e->getX(), 2) + powf(h.pos.y - e->getY(), 2));
+            float hitBox = (h.isRiu) ? 45.0f : 25.0f; // Lv5 rìu to hơn nên hitbox to hơn
 
+            if (d < hitBox + 15.0f) {
+                int dmg = (h.isRiu) ? 120 : ((lv_hammer >= 2) ? 50 : 25);
+                e->takeDamage(dmg);
+            }
+        }
+    }
+}
 void Skill::draw() {
     if (type == SkillType::AUTO_BALLS) {
         for (int i = 0; i < num_particles; i++) {
@@ -253,5 +312,18 @@ void Skill::draw() {
             DrawTexturePro(shieldTexture, src, dest, origin, s.rotation, WHITE);
         }
     }
+    for (auto& h : activeHammers) {
+    if (h.active) {
+        Texture2D currentTex = h.isRiu ? axeTexture : hammerTexture;
+        float scale = (lv_hammer >= 2) ? 0.3f : 0.15f; // Tăng scale lv2
+        if (h.isRiu) scale = 0.5f; // Lv5 cực đại
+
+        Rectangle src = {0, 0, (float)currentTex.width, (float)currentTex.height};
+        Rectangle dest = {h.pos.x, h.pos.y, currentTex.width * scale, currentTex.height * scale};
+        Vector2 origin = {(currentTex.width * scale) / 2, (currentTex.height * scale) / 2};
+
+        DrawTexturePro(currentTex, src, dest, origin, h.rotation, WHITE);
+    }
+}
     }
 

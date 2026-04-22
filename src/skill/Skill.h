@@ -41,6 +41,20 @@ private:
     int lv_shield = 1;      
     float shield_timer = 0;
     Texture2D shieldTexture; 
+    //skill bua
+    struct Hammer {
+        Vector2 pos;
+        Vector2 speed;
+        bool active;
+        float rotation;
+        bool isRiu; // Đánh dấu nếu là rìu chiến lv5
+    } ;
+    std::vector<Hammer> activeHammers;
+    int lv_hammer = 1;
+    float hammer_timer = 0;
+    Texture2D hammerTexture;
+    Texture2D axeTexture;
+
 public:
     //Constructor
     Skill(Player* p);
@@ -53,12 +67,14 @@ public:
         UnloadTexture(shurikenTexture);
         UnloadTexture(thunderTexture);
         UnloadTexture(shieldTexture);
+        UnloadTexture(hammerTexture);
+        UnloadTexture(axeTexture);
     }
     void activateLaser(std::vector<Enemy*>& enemies); // Đổi mousePos thành enemies
     Vector2 getLaserDirection() const { return laser_direction; } // Thêm getter này để main.cpp dùng
     void triggerThunder(std::vector<Enemy*>& enemies);//thunder strike
     void triggerShieldCollision(std::vector<Enemy*>& enemies);
-    
+    void triggerHammerCollision(std::vector<Enemy*>& enemies);
     // Getters
     float getAngle() const { return angle; }
     float getRadius() const { return radius; }

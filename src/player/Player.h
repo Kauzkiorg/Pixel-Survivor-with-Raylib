@@ -11,6 +11,7 @@ private:
     int score = 0; // New score variable
     float speed = 3.0f;
     int damage = 10; // Player damage
+    Camera2D camera; // Camera that follows the player
     
 public:
     //Constructor
@@ -27,6 +28,7 @@ public:
     float getSpeed() const { return speed; }
     int getDamage() const { return damage; }
     int getExpToNextLevel() const; // Returns EXP needed for next level
+    Camera2D getCamera() const { return camera; } // Get the player's camera
     
     // Setters
     void setHp(int newHp) { hp = newHp; if (hp > maxHp) hp = maxHp; }
