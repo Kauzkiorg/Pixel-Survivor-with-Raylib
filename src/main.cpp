@@ -69,6 +69,21 @@ int main() {
             EndDrawing();
             continue;
         }
+        if (waveSystem.isFinished() && enemies.empty()) {
+            BeginDrawing ();
+            ClearBackground(BLACK); 
+            int total = (int)waveSystem.getInternalTimer();
+            int mins = (int)(total / 60);
+            int secs = (int)(total % 60);
+
+            DrawText("VICTORY!", 275, 150, 60, GOLD);
+            DrawText("CONGRATULATIONS!", 275, 230, 30, WHITE);
+            DrawText(TextFormat("FINAL SCORE: %d", player.getScore()), 315, 300, 22, WHITE);
+            DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 305, 340, 22, WHITE);
+            EndDrawing();
+            if (IsKeyPressed(KEY_ESCAPE)) break;
+            continue;
+        }
         float dt = GetFrameTime();
         waveSystem.update(dt);
 
@@ -104,6 +119,7 @@ int main() {
         // Spawn enemies
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
+        if (!waveSystem.isFinished())
         spawnTimer += GetFrameTime();
         if (spawnTimer >= waveSystem.getSpawnInterval()) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
