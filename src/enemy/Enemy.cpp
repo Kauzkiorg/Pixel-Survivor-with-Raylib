@@ -15,6 +15,9 @@ Enemy::Enemy(Player* p, int type, Texture2D* tex) : player(p), enemyType(type), 
     } else if (type == 3) { // RANGED
         hp = 30;
         speed = 0.5f;
+        stoppingDistance = (float)GetRandomValue(200,300);
+    } else {
+        stoppingDistance = 0.0f;
     }
 }
 
@@ -24,22 +27,30 @@ void Enemy::update() {
     float dy = player->getY() - y;
     float dist = sqrt(dx*dx + dy*dy);
     
-    if (dist > 0) {
+    if (dist > 0.1f) {
+        // tạo logic dùng lại để bắn của quái RANGED
+        if (enemyType == 3 && dist < stoppingDistance){
+            // đã vào tầm bắn không cộng thêm nữa
+        } else {
         x += (dx / dist) * speed;
         y += (dy / dist) * speed;
-        rotation = atan2f(dx, dy) * (180.0f / PI);
+        }
+        // cập nhật góc quay
+        rotation = atan2f(dy,dx) * (180.0f / PI);
     }
 }
 
 void Enemy::draw() {
     if (texture !=nullptr){
         float targetSize = 32.0f;
-        float scale = targetSize / texture-> width;
-        Vector2 pos =  { (float)x - (targetSize)/2, (float)y - (targetSize) / 2 };
-        DrawTextureEx(*texture, pos, rotation, scale,  WHITE);
-
+        // tạo cấu hình vùng ảnh
+        Rectangle source = { 0.0f, 0.0f, (float)texture->width, (float)texture->height };
+        // tạo cấu hình vùng va chạm
+        Rectangle dest = { x, y, targetSize, targetSize };
+        // thiết lập điểm gốc (tâm hình chữ nhật) để tính góc xoay từ tâm
+        Vector2 origin = { targetSize / 2.0f, targetSize / 2.0f };
+        // Vẽ
+        DrawTexturePro(*texture, source, dest, origin, rotation, WHITE);
     }
     DrawText(TextFormat("HP: %d", hp), x - 15, y - 20, 8, WHITE);
 }
-// can chinh lai hit box sao cho no bao boc quai
-// chinh lai cai goc xoay tu dong, nhin no hia cot qua 

@@ -128,31 +128,26 @@ int main() {
         // Update
         for (auto e : entities) e->update();
         // RANGED ENEMY LOGIC (Type 3)
-            enemyFireTimer += GetFrameTime(); 
+        enemyFireTimer += GetFrameTime(); 
         for (auto e : enemies) {
             if (e->getEnemyType() == 3) { 
                 // Calculate distance between this enemy and player
                 float d = distance(e->getX(), e->getY(), player.getX(), player.getY());
-                if (d < 250) { 
-                // If within range, stop moving and prepare to shoot
-                    e->setSpeed(0); 
+                // sửa lại logic bắn đạn
+                if (d < 300.0f) {
                     if (enemyFireTimer >= 1.5f) { 
-                        float sX = (player.getX() > e->getX()) ? 15 : -15;
-                        float sY = (player.getY() > e->getY()) ? 15 : -15;
-                // Spawn an enemy bullet targeting the player's current position
-                        Bullet* eb = new Bullet(e->getX() + sX, e->getY() + sY, player.getX(), player.getY());
+                        Bullet* eb = new Bullet(e->getX(), e->getY(), player.getX(), player.getY());
                         eb->setIsEnemyBullet(true);
                         bullets.push_back(eb);
                         entities.push_back(eb);
                     }
-                } else {
-                // If player is far away, resume chasing
-                    e->setSpeed(0.8f); 
-                }
+                } 
             }
         }
         // Reset shooting timer after 1.5 seconds
-        if (enemyFireTimer >= 1.5f) enemyFireTimer = 0;
+        if (enemyFireTimer >= 1.5f) {
+            enemyFireTimer = 0;
+        }
 
         // Spawn enemies
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius

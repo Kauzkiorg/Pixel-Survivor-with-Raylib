@@ -17,6 +17,8 @@ private:
     float speed;
     // tinh goc xoay
     float rotation;
+    // tạo cư ly khai hỏa riêng biệt
+    float stoppingDistance;
 public:
     //Constructor
     Enemy(Player* p, int type, Texture2D* tex);
