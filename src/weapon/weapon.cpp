@@ -4,9 +4,9 @@
 #include <algorithm>
 
 // Weapon stats arrays for cleaner initialization
-static const int weaponDamages[] = {15, 8, 6, 20};
-static const float weaponCooldowns[] = {0.5f, 0.8f, 0.3f, 1.0f};
-static const char* weaponNames[] = {"Sword", "Magic Wand", "Knife", "Spell Book"};
+static const int weaponDamages[] = {25, 8, 6, 20};  // Hammer: high damage
+static const float weaponCooldowns[] = {1.2f, 0.8f, 0.3f, 1.0f};  // Hammer: decent cooldown
+static const char* weaponNames[] = {"Hammer", "Magic Wand", "Knife", "Spell Book"};
 
 // Helper functions
 static Vector2 normalizeVector(Vector2 v) {
@@ -45,18 +45,12 @@ void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
     Vector2 pp = {player.getX(), player.getY()};
     
     switch (weaponType) {
-        case 0: { // Sword - 45 degree cone attack
-            Vector2 dir = normalizeVector({targetPosition.x - pp.x, targetPosition.y - pp.y});
+        case 0: { // Hammer - simple circle AoE
             for (Enemy* e : enemies) {
-                Vector2 ep = {e->getX(), e->getY()};
-                if (distance(pp, ep) <= 80) {
-                    Vector2 toEnemy = normalizeVector({ep.x - pp.x, ep.y - pp.y});
-                    if (dir.x * toEnemy.x + dir.y * toEnemy.y >= 0.924f) {
-                        e->takeDamage(weaponDamage + player.getDamage());
-                    }
-                }
+                if (distance(pp, {e->getX(), e->getY()}) <= 100)
+                    e->takeDamage(weaponDamage + player.getDamage());
             }
-            projectiles.push_back({pp, {0,0}, 0.1f, 80, 0, YELLOW, 1, (float)atan2(dir.y, dir.x)});
+            projectiles.push_back({pp, {0,0}, 0.2f, 100, 0, ORANGE, 1, 0});
             break;
         }
         
@@ -69,20 +63,20 @@ void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
             }
             if (nearest) {
                 Vector2 dir = normalizeVector({nearest->getX() - pp.x, nearest->getY() - pp.y});
-                projectiles.push_back({pp, {dir.x*300, dir.y*300}, 2.0f, 6.0f, weaponDamage + player.getDamage(), PURPLE, 0, 0});
+                projectiles.push_back({pp, {dir.x*300, dir.y*300}, 2.0f, 6.0f, (float)(weaponDamage + player.getDamage()), PURPLE, 0, 0});
             }
             break;
         }
         
         case 2: { // Knife - shoots straight toward target
             Vector2 dir = normalizeVector({targetPosition.x - pp.x, targetPosition.y - pp.y});
-            projectiles.push_back({pp, {dir.x*500, dir.y*500}, 1.0f, 4.0f, weaponDamage + player.getDamage(), SKYBLUE, 0, 0});
+            projectiles.push_back({pp, {dir.x*500, dir.y*500}, 1.0f, 4.0f, (float)(weaponDamage + player.getDamage()), SKYBLUE, 0, 0});
             break;
         }
         
         case 3: { // Spell Book - explosive projectile
             Vector2 dir = normalizeVector({targetPosition.x - pp.x, targetPosition.y - pp.y});
-            projectiles.push_back({pp, {dir.x*400, dir.y*400}, 2.0f, 8.0f, weaponDamage + player.getDamage(), PURPLE, 2, 150.0f});
+            projectiles.push_back({pp, {dir.x*400, dir.y*400}, 2.0f, 8.0f, (float)(weaponDamage + player.getDamage()), PURPLE, 2, 150.0f});
             break;
         }
     }
@@ -104,7 +98,7 @@ void updateProjectiles(std::vector<WeaponProjectile>& projectiles, std::vector<E
                     if (p.type == 2) { // Explosion
                         float expRad = p.angle;
                         for (int k = 0; k < (int)enemies.size(); k++) {
-                            if (k != j && distance(p.position, {enemies[k]->getX(), enemies[k]->getY()}) <= expRad) {
+                            if (k != j && enemies[k] != nullptr && distance(p.position, {enemies[k]->getX(), enemies[k]->getY()}) <= expRad) {
                                 enemies[k]->takeDamage(p.damage / 2);
                             }
                         }
@@ -127,14 +121,10 @@ void updateProjectiles(std::vector<WeaponProjectile>& projectiles, std::vector<E
 // Draw all projectiles
 void drawProjectiles(const std::vector<WeaponProjectile>& projectiles) {
     for (const auto& projectile : projectiles) {
-        // Sword slash visual (type 1)
+        // Hammer smash visual (type 1) - full 360 degree circle AoE
         if (projectile.type == 1) {
-            float angleDegrees = projectile.angle * (180.0f / 3.14159265f);
-            float startAngle = angleDegrees - 22.5f;
-            float endAngle = angleDegrees + 22.5f;
-            
-            DrawCircleSector(projectile.position, projectile.radius, startAngle, endAngle, 8, Fade(YELLOW, projectile.lifeTime * 10));
-            DrawCircleSectorLines(projectile.position, projectile.radius, startAngle, endAngle, 8, Fade(WHITE, projectile.lifeTime * 10));
+            DrawCircleV(projectile.position, projectile.radius, Fade(ORANGE, projectile.lifeTime * 5));
+            DrawCircleLinesV(projectile.position, projectile.radius, Fade(YELLOW, projectile.lifeTime * 5));
         }
         // Explosion visual (type 2, damage=0 means it's the visual effect)
         else if (projectile.type == 2 && projectile.damage == 0) {

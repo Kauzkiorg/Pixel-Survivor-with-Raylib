@@ -10,6 +10,7 @@
 #include "bullet/Bullet.h"
 #include "Item/Item.h"
 #include "weapon/weapon.h"
+
 using namespace std;
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -47,11 +48,11 @@ int main() {
     entities.push_back(skill);
 
     // Create weapons
-    Weapon sword(0);      // Sword
+    Weapon hammer(0);     // Hammer
     Weapon magicWand(1);  // Magic Wand
     Weapon knife(2);      // Knife
     Weapon spellBook(3);  // Spell Book
-    Weapon* currentWeapon = &sword; // Start with sword
+    Weapon* currentWeapon = &hammer; // Start with hammer
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
@@ -80,7 +81,7 @@ int main() {
         gameTimer += dt; // Update game timer
 
         // Switch weapons with number keys
-        if (IsKeyPressed(KEY_ONE)) currentWeapon = &sword;
+        if (IsKeyPressed(KEY_ONE)) currentWeapon = &hammer;
         if (IsKeyPressed(KEY_TWO)) currentWeapon = &magicWand;
         if (IsKeyPressed(KEY_THREE)) currentWeapon = &knife;
         if (IsKeyPressed(KEY_FOUR)) currentWeapon = &spellBook;
