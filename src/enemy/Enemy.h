@@ -33,6 +33,22 @@ public:
     float getSpeed() const { return speed; }
     int getEnemyType() const { return enemyType; }
     Player* getPlayer() const { return player; }
+    int getExpReward() {
+        switch(enemyType){
+            case 1 : return 15; // FAST
+            case 2 : return 30; // TANK
+            case 3 : return 25; // RANGED
+            default: return 10; // NORMAL
+        }
+    }
+    int getScoreReward() {
+        switch(enemyType) {
+            case 1 : return 15;
+            case 2 : return 25;
+            case 3 : return 20;
+            default: return 10;
+        }
+    }
     
     // Setters
     void setHp(int newHp) { hp = newHp; }

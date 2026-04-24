@@ -146,20 +146,7 @@ int main() {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * PIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * PIXEL_SPAWN_RADIUS;
-        // Define Difficulty Multipliers
-            float hpMult = 1.0f;
-            float spdMult = 1.0f;
-            switch (currentDiffID) {
-                case 0:
-                hpMult = 0.8f; spdMult = 0.8f;
-                break;
-                case 1:
-                hpMult = 2.0f; spdMult = 1.1f;
-                break;
-                case 2:
-                hpMult = 5.0f; spdMult = 1.4f;
-                break;
-            }
+
         // Create Enemy Object
             int type =waveSystem.getRandomEnemyType();
             Enemy* e = new Enemy(&player, type, &enemySprites[type]);
@@ -168,8 +155,10 @@ int main() {
             e->setPosition(spawnX, spawnY);
 
             float multiplier = waveSystem.getStatMultiplier();
-            e->setHp((int)(e->getHp() * multiplier * hpMult));// Multiply both here
-            e->setSpeed(e->getSpeed() * spdMult);  //Add speed multiplier
+            float diffHPMult = waveSystem.getDifficultyHPMultiplier();
+            float diffSpMult = waveSystem.getDifficultySpeedMultiplier();
+            e->setHp((int)(e->getHp() * multiplier * diffHPMult));// Multiply both here
+            e->setSpeed(e->getSpeed() * diffSpMult);  //Add speed multiplier
         // Add to Management Lists
             enemies.push_back(e);
             entities.push_back(e);
@@ -193,19 +182,9 @@ int main() {
                     bullets[j]->setX(-1000);
                     
                     if (enemies[i]->getHp() <= 0) {
-                        // Award score based on enemy type
-                        int scoreType = enemies[i]->getEnemyType();
-                        if (scoreType == 0) player.addScore(10); // NORMAL
-                        else if (scoreType == 1) player.addScore(15); // FAST
-                        else if (scoreType == 2) player.addScore(25); // TANK
-                        else if (scoreType == 3) player.addScore(20); // RANGED
-                        // Spawn an item at the enemy's position with EXP value based on enemy type
-                        int val = 10; // NORMAL EXP
-                        int type = enemies[i]->getEnemyType();
-                        if (type == 1) val = 15; // FAST EXP
-                        if (type == 2) val = 25;// TANK EXP 
-                        if (type == 3) val = 20;  // RANGED EXP
-                        Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val, 0);
+                        player.addScore(enemies[i]->getScoreReward());
+                        int expVal = enemies[i]->getExpReward();
+                        Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), expVal, 0);
                         items.push_back(item);
                         entities.push_back(item);
                         removeEntity(entities, bullets[j]);

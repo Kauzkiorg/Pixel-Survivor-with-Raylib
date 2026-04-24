@@ -42,7 +42,7 @@ int WaveManager::getRandomEnemyType() {
     // Điều này giúp logic đồng bộ với hiển thị UI
     switch (stage){
         case 0: // Waves 1-4
-            return 3; // NORMAL only
+            return 1; // NORMAL only
         case 1: // Waves 5-8
             return (r < 70) ? 0 : 1; // 70% NORMAL, 30% FAST
         case 2: // Waves 9-12
@@ -97,4 +97,17 @@ void WaveManager::setDifficulty(int id) {
         spawnRateMult = 0.5f;
         break;
     }
+}
+float WaveManager::getDifficultyHPMultiplier() {
+    if (difficultyID == 0) return 0.8f;
+    if (difficultyID == 1) return 2.0f;
+    if (difficultyID == 2) return 5.0f;
+    return 1.0f;
+}
+
+float WaveManager::getDifficultySpeedMultiplier() {
+    if (difficultyID == 0) return 0.8f;
+    if (difficultyID == 1) return 1.1f;
+    if (difficultyID == 2) return 1.4f;
+    return 1.0f;
 }

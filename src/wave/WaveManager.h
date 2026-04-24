@@ -28,4 +28,6 @@ public:
     // Skip to a specific wave number (useful for testing or cheat codes)
     void skipToWave(int waveNumber); 
     void setDifficulty(int id);
+    float getDifficultyHPMultiplier();
+    float getDifficultySpeedMultiplier();
 };
