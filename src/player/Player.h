@@ -32,6 +32,7 @@ public:
     int getDamage() const { return damage; }
     Vector2 getFacingDir() const { return facingDir; }
     int getExpToNextLevel() const; // Returns EXP needed for next level
+    Camera2D getCamera() const { return camera; } // Get the player's camera
     
     // Setters
     void setHp(int newHp) { hp = newHp; if (hp > maxHp) hp = maxHp; }
