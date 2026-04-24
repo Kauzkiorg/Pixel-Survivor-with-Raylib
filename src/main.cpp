@@ -9,6 +9,8 @@
 #include "skill/Skill.h"
 #include "bullet/Bullet.h"
 #include "Item/Item.h"
+#include "weapon/weapon.h"
+
 using namespace std;
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -35,6 +37,7 @@ int main() {
     vector<Enemy*> enemies;
     vector<Bullet*> bullets;
     vector<Item*> items;
+    vector<WeaponProjectile> weaponProjectiles; // Weapon projectile system
     float enemyFireTimer=0; // Track cooldown for ranged enemies
     float spawnTimer = 0.0f; // Track time for spawning enemies
     float gameTimer = 0.0f; // Track total survival time
@@ -51,8 +54,16 @@ int main() {
     Skill* skill = new Skill(&player);
     entities.push_back(skill);
 
-    while (!WindowShouldClose()) { 
-        hpSpawnTimer += GetFrameTime();
+    // Create weapons
+    Weapon hammer(0);     // Hammer
+    Weapon magicWand(1);  // Magic Wand
+    Weapon knife(2);      // Knife
+    Weapon spellBook(3);  // Spell Book
+    Weapon* currentWeapon = &hammer; // Start with hammer
+
+    while (!WindowShouldClose()) {
+        float dt = GetFrameTime();
+        hpSpawnTimer += dt;
         if (hpSpawnTimer >= 10.0f) { // Spawn HP item every 10 seconds
             float randomX = GetRandomValue(50, 750);
             float randomY = GetRandomValue(50, 550);
@@ -74,7 +85,20 @@ int main() {
             EndDrawing();
             continue;
         }
-        gameTimer += GetFrameTime(); // Update game timer
+        gameTimer += dt; // Update game timer
+
+        // Switch weapons with number keys
+        if (IsKeyPressed(KEY_ONE)) currentWeapon = &hammer;
+        if (IsKeyPressed(KEY_TWO)) currentWeapon = &magicWand;
+        if (IsKeyPressed(KEY_THREE)) currentWeapon = &knife;
+        if (IsKeyPressed(KEY_FOUR)) currentWeapon = &spellBook;
+
+        Vector2 attackTarget = GetMousePosition();
+        bool isAttacking = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+
+        // Update weapons
+        currentWeapon->update(player, enemies, weaponProjectiles, attackTarget, isAttacking);
+        updateProjectiles(weaponProjectiles, enemies, dt);
 
         // Convert mouse position from screen coordinates to world coordinates
         Vector2 mouseScreenPos = GetMousePosition();
@@ -83,7 +107,7 @@ int main() {
         // Update
         for (auto e : entities) e->update();
         // RANGED ENEMY LOGIC (Type 3)
-            enemyFireTimer += GetFrameTime(); 
+            enemyFireTimer += dt;
         for (auto e : enemies) {
             if (e->getEnemyType() == 3) { 
                 // Calculate distance between this enemy and player
@@ -112,7 +136,7 @@ int main() {
         // Spawn enemies
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
-        spawnTimer += GetFrameTime();
+        spawnTimer += dt;
         if (spawnTimer >= 1.0f) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
@@ -140,12 +164,7 @@ int main() {
             spawnTimer = 0.0f;
         }
 
-        // Shoot bullets
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Bullet* b = new Bullet(player.getX(), player.getY(), attackTarget.x, attackTarget.y);
-            bullets.push_back(b);
-            entities.push_back(b);
-        }
+        // Weapon system handles auto-attack (no manual shooting needed)
 
         // Bullet-enemy collisions
         for (size_t i = 0; i < enemies.size(); i++) {
@@ -235,6 +254,28 @@ int main() {
             }
         }
 
+        // Check for dead enemies from weapon bullets
+        for (int i = (int)enemies.size() - 1; i >= 0; i--) {
+            if (enemies[i]->getHp() <= 0) {
+                // Award score based on enemy type
+                int scoreType = enemies[i]->getEnemyType();
+                if (scoreType == 0) player.addScore(10); // NORMAL
+                else if (scoreType == 1) player.addScore(15); // FAST
+                else if (scoreType == 2) player.addScore(25); // TANK
+                else if (scoreType == 3) player.addScore(20); // RANGED
+                // Spawn an item at the enemy's position with EXP value based on enemy type
+                int val = 10; // NORMAL EXP
+                int type = enemies[i]->getEnemyType();
+                if (type == 1) val = 15; // FAST EXP
+                if (type == 2) val = 25;// TANK EXP
+                if (type == 3) val = 20;  // RANGED EXP
+                Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val, 0);
+                items.push_back(item);
+                entities.push_back(item);
+                removeEnemy(entities, enemies, i);
+            }
+        }
+
         // Draw
         BeginDrawing();
         ClearBackground(BLACK);
@@ -244,6 +285,10 @@ int main() {
         
         // Draw all game entities with camera applied
         for (auto e : entities) e->draw();
+        drawProjectiles(weaponProjectiles); // Draw weapon projectiles
+        
+        // Draw current weapon name
+        DrawText(TextFormat("Weapon: %s (1-4 to switch)", currentWeapon->getName()), 10, 105, 15, GREEN);
         
         // End camera mode
         EndMode2D();
