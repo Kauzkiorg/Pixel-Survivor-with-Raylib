@@ -172,72 +172,21 @@ int main() {
         }
 
        // Skill-enemy collisions
-        for (int i = (int)enemies.size() - 1; i >= 0; i--) {
-            bool is_enemy_hit = false;
-
-            // Check collision with each orbiting ball of the skill
-            for (int j = 0; j < skill->getNumParticles(); j++) {
-                
-                // calculate the position of the ball 
-                
-                float p_angle = skill->getAngle() + (j * 2.0f * PI / skill->getNumParticles());
-                float p_x = skill->getX() + cos(p_angle) * skill->getRadius();
-                float p_y = skill->getY() + sin(p_angle) * skill->getRadius();
-
-                // Check collision between ball j and enemy i
-                if (distance(p_x, p_y, enemies[i]->getX(), enemies[i]->getY()) < 15) {
-                    enemies[i]->takeDamage((int)skill->getDamage()); 
-                    is_enemy_hit = true;
-                    break; // Nếu quái đã trúng 1 viên rồi thì không cần check các viên khác trong cùng frame
-                }
-            }
-
-            // Nếu quái chết sau khi trúng bi
-            if (is_enemy_hit && enemies[i]->getHp() <= 0) {
-                player.addExp(10); // +10 EXP for each monster killed.
-                // Award score based on enemy type for skill kills
-                int scoreType = enemies[i]->getEnemyType();
-                if (scoreType == 0) player.addScore(10); // NORMAL
-                else if (scoreType == 1) player.addScore(15); // FAST
-                else if (scoreType == 2) player.addScore(25); // TANK
-                else if (scoreType == 3) player.addScore(20); // RANGED
-                removeEnemy(entities, enemies, i); // delete enemy and remove from entities list
-            }
-            // Laser Beam - Enemy collisions
-            skill->activateLaser(enemies); 
-
-            // Logic gây damage laser (giữ nguyên đoạn CheckCollisionCircleLine )
-            if (skill->isLaserActive()) {
-                for (int i = (int)enemies.size() - 1; i >= 0; i--) {
-                    Vector2 startPos = { skill->getX(), skill->getY() };
-                    Vector2 endPos = { 
-                        startPos.x + skill->getLaserDirection().x * 400, 
-                        startPos.y + skill->getLaserDirection().y * 400 
-                    };
-
-                    if (CheckCollisionCircleLine({enemies[i]->getX(), enemies[i]->getY()}, 15, startPos, endPos)) {
-                        enemies[i]->takeDamage(100);
-                        if (enemies[i]->getHp() <= 0) {
-                            player.addExp(10);
-                            removeEnemy(entities, enemies, i);
-                        }
-                    }
-                }
-            }
-
-           
-        }
-
-        //thunder strike
+        skill->triggerLaser(enemies);
         skill->triggerThunder(enemies);
-        //check and delete dead enemies after thunder strike
-        for(int i=(int)enemies.size()-1;i>=0;i--){
-            if (enemies[i]->getHp()<=0){
+        skill->triggerHammer(enemies);
+        skill->triggerShield(enemies);
+        
+
+
+        // KIỂM TRA QUÁI CHẾT (Nếu HP <= 0 thì xóa)
+        for (int i = (int)enemies.size() - 1; i >= 0; i--) {
+            if (enemies[i]->getHp() <= 0) {
                 player.addExp(10);
+                player.addScore(10);
                 removeEnemy(entities, enemies, i);
             }
-        }        
-
+        }
         // Player-enemy collisions
         for (auto enemy : enemies) {
             if (distance(player.getX(), player.getY(), 
@@ -256,6 +205,7 @@ int main() {
             }
         }
         //sheild
+        
         skill->triggerShieldCollision(enemies);
 
         //bua
