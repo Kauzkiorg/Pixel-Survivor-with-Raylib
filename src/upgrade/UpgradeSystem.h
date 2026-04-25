@@ -52,14 +52,11 @@ private:
     int titleSize;
     int cardTextSize;
     
-    // Animation timing
-    float animationTimer;
     bool isFadingIn;
     bool isFadingOut;
     
 public:
     UpgradeSystem();
-    ~UpgradeSystem();
     
     // Main functions
     void showUpgradeMenu(std::vector<Weapon*>& weapons);  // Show upgrade menu with random options
@@ -74,24 +71,5 @@ public:
     UpgradeOption getSelectedUpgrade() const;
     
 private:
-    // Helper functions
     void generateUpgradeOptions(std::vector<Weapon*>& weapons);
-    void layoutCards();
-    void handleInput();
-    void applyUpgrade(const UpgradeOption& option, std::vector<Weapon*>& weapons);
-    
-    // UI helper functions
-    void drawCard(const UpgradeCard& card);
-    void drawTitle();
-    void drawSkipButton();
-    void drawOverlay();
-    
-    // Animation helpers
-    void fadeIn();
-    void fadeOut();
-    void updateAnimation();
-    
-    // Get upgrade description for display
-    std::string getUpgradeDescription(int weaponType, int level, bool isNew);
-    std::string getWeaponName(int weaponType);
 };
