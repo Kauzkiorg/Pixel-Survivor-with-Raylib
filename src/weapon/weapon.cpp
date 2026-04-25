@@ -27,7 +27,7 @@ int Weapon::getLevel() const {
 }
 
 void Weapon::setLevel(int newLevel) {
-    if (newLevel < 1) newLevel = 1;
+    if (newLevel < 0) newLevel = 0;
     if (newLevel > 10) newLevel = 10;
     weaponLevel = newLevel;
     updateWeaponStats();
@@ -209,6 +209,10 @@ void Weapon::updateSpellBookStats() {
 // Update weapon - handles cooldown and attacks
 void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
                     std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition, bool isAttacking) {
+    if (weaponLevel <= 0) {
+        return;
+    }
+
     currentCooldownTimer += GetFrameTime();
     if (isAttacking && currentCooldownTimer >= attackCooldown) {
         currentCooldownTimer = 0;
@@ -219,6 +223,10 @@ void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
 // Internal attack method - handles different weapon behaviors
 void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
                     std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition) {
+    if (weaponLevel <= 0) {
+        return;
+    }
+
     Vector2 pp = {player.getX(), player.getY()};
     int totalDamage = weaponDamage + player.getDamage();
     

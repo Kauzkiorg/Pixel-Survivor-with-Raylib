@@ -10,6 +10,7 @@
 #include "bullet/Bullet.h"
 #include "Item/Item.h"
 #include "weapon/weapon.h"
+#include "upgrade/UpgradeSystem.h"
 
 using namespace std;
 
@@ -60,9 +61,88 @@ int main() {
     Weapon knife(2);      // Knife
     Weapon spellBook(3);  // Spell Book
     Weapon* currentWeapon = &hammer; // Start with hammer
+    
+    // Create upgrade system
+    UpgradeSystem upgradeSystem;
+    
+    // Track which weapons are unlocked (level > 0 means unlocked)
+    // Weapons start at level 1 by default in the constructor
+    // We'll manage weapon unlocking through the upgrade system
+    hammer.setLevel(0);   // Start with no weapons unlocked
+    magicWand.setLevel(0);
+    knife.setLevel(0);
+    spellBook.setLevel(0);
+    
+    // Give player a starting weapon
+    hammer.setLevel(1);   // Start with Hammer unlocked at level 1
+    
+    // Vector to track all weapons for the upgrade system
+    vector<Weapon*> allWeapons;
+    allWeapons.push_back(&hammer);
+    allWeapons.push_back(&magicWand);
+    allWeapons.push_back(&knife);
+    allWeapons.push_back(&spellBook);
+    
+    // Track if we need to show upgrade menu
+    bool shouldShowUpgrade = false;
+    int previousLevel = 1;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
+        
+        // Check if upgrade menu is active
+        if (upgradeSystem.isMenuActive()) {
+            upgradeSystem.update();
+            
+            // If menu just closed, apply the selected upgrade
+            if (!upgradeSystem.isMenuActive() && !upgradeSystem.isGamePaused()) {
+                UpgradeOption selected = upgradeSystem.getSelectedUpgrade();
+                if (selected.weaponType >= 0) {
+                    // Apply the upgrade
+                    if (selected.isNewWeapon) {
+                        // Find the weapon and unlock it
+                        if (selected.weaponType < (int)allWeapons.size()) {
+                            allWeapons[selected.weaponType]->setLevel(1);
+                        }
+                    } else if (selected.weaponPtr != nullptr) {
+                        selected.weaponPtr->levelUp();
+                    }
+                }
+            }
+            
+            // Draw upgrade menu (it handles its own drawing)
+            BeginDrawing();
+            ClearBackground(BLACK);
+            
+            // Draw game behind the overlay
+            BeginMode2D(player.getCamera());
+            for (auto e : entities) e->draw();
+            drawProjectiles(weaponProjectiles);
+            EndMode2D();
+            
+            // Draw UI elements
+            DrawFPS(10, 10);
+            DrawText(TextFormat("HP: %d/%d", player.getHp(), player.getMaxHp()), 10, 30, 20, WHITE);
+            DrawText(TextFormat("LV: %d", player.getLevel()), 10, 55, 20, YELLOW);
+            
+            upgradeSystem.draw();
+            
+            EndDrawing();
+            continue;  // Skip normal game update when menu is active
+        }
+        
+        // Check for level up (trigger upgrade menu)
+        if (player.getLevel() > previousLevel) {
+            shouldShowUpgrade = true;
+            previousLevel = player.getLevel();
+        }
+        
+        // Show upgrade menu if needed
+        if (shouldShowUpgrade) {
+            upgradeSystem.showUpgradeMenu(allWeapons);
+            shouldShowUpgrade = false;
+            continue;  // Skip this frame's game update
+        }
         hpSpawnTimer += dt;
         if (hpSpawnTimer >= 10.0f) { // Spawn HP item every 10 seconds
             float randomX = GetRandomValue(50, 750);
@@ -202,9 +282,21 @@ int main() {
                         enemies[i]->getX(), enemies[i]->getY()) < 15) {
                 enemies[i]->takeDamage(10);
                 if (enemies[i]->getHp() <= 0) {
-                    // Award score for killing enemy with skill
-                    player.addScore(5); 
-                    player.addExp(10);
+                    int scoreType = enemies[i]->getEnemyType();
+                    if (scoreType == 0) player.addScore(10); // NORMAL
+                    else if (scoreType == 1) player.addScore(15); // FAST
+                    else if (scoreType == 2) player.addScore(25); // TANK
+                    else if (scoreType == 3) player.addScore(20); // RANGED
+
+                    int val = 10; // NORMAL EXP
+                    int type = enemies[i]->getEnemyType();
+                    if (type == 1) val = 15; // FAST EXP
+                    if (type == 2) val = 25; // TANK EXP
+                    if (type == 3) val = 20; // RANGED EXP
+
+                    Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val, 0);
+                    items.push_back(item);
+                    entities.push_back(item);
                     removeEnemy(entities, enemies, i);
                 }
             }
