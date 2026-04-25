@@ -4,7 +4,7 @@
 #include "raylib.h"
 
 class Enemy : public Entity {
-private:
+protected:
     Player* player;
     Texture2D *texture;
     // insert ID enemy
@@ -53,6 +53,7 @@ public:
     // Setters
     void setHp(int newHp) { hp = newHp; }
     void setSpeed(float newSpeed) { speed = newSpeed; }
-    void takeDamage(int damage) { hp -= damage; }
+    virtual void takeDamage(int damage) { hp -= damage; }
+    virtual ~Enemy() {}
     
 };

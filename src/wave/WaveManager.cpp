@@ -3,6 +3,9 @@
 WaveManager::WaveManager() {
     internalTimer = 0.0f;
     currentMilestoneIdx = 0;
+    difficultyID = 0;
+    spawnRateMult = 1.0f;
+    bossSpawned = false;
 }
 void WaveManager::update(float deltaTime) {
     internalTimer += deltaTime;
@@ -22,6 +25,10 @@ float WaveManager::getSpawnInterval() const {
     interval = baseInterval / waveSpeedUp;
     } 
     interval = interval * spawnRateMult;
+    // thêm điều kiện để giảm tỉ lệ spawn tại wave 20
+    if (waveNum == 20){
+        interval = interval * 3.0f;
+    }
     if (interval < 0.2f) {
         return 0.2f; 
     }
@@ -66,13 +73,15 @@ int WaveManager::getRandomEnemyType() {
 
 void WaveManager::setInternalTimer (float time) {
     internalTimer = time;
+    bossSpawned = false;
     if (internalTimer <= 30.0f) {
         currentMilestoneIdx = 0;
     } else {
-        currentMilestoneIdx = (int)sqrtf((internalTimer ) / 15.0f) + 1;
+        currentMilestoneIdx = (int)(internalTimer / 30.0f);
     }
 }
 void WaveManager::skipToWave(int waveNumber) {
+    bossSpawned = false; // Rêset lại khi nhảy wave
     if (waveNumber > 20) {
         waveNumber = 20; // Cap at max wave
     }
@@ -81,7 +90,7 @@ void WaveManager::skipToWave(int waveNumber) {
         currentMilestoneIdx = 0;
     } else {
         currentMilestoneIdx = waveNumber - 1;
-        internalTimer = powf((float)(currentMilestoneIdx - 1), 2) * 15.0f + 60.00f;
+        internalTimer = (float)currentMilestoneIdx * 30.0f;
     }
 }
 void WaveManager::setDifficulty(int id) {
@@ -110,4 +119,13 @@ float WaveManager::getDifficultySpeedMultiplier() {
     if (difficultyID == 1) return 1.1f;
     if (difficultyID == 2) return 1.4f;
     return 1.0f;
+}
+bool WaveManager::shouldSpawnBoss() {
+    if (currentMilestoneIdx == 19 && !bossSpawned) {
+        return true;
+    }
+    return false;
+}
+void WaveManager::markBossSpawned() {
+    bossSpawned = true;
 }

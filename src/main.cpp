@@ -10,6 +10,7 @@
 #include "bullet/Bullet.h"
 #include "Item/Item.h"
 #include "wave/WaveManager.h"
+#include "boss/Boss.h"
 using namespace std;
 
 float distance(float x1, float y1, float x2, float y2) {
@@ -61,7 +62,7 @@ int main() {
     while (!WindowShouldClose()) { 
         if (!gameStarted){
             // dùng phím chọn qua chế độ chơi nào
-            if (IsKeyPressed(KEY_ONE))   { currentDiffID = 0; gameStarted = true; }
+            if (IsKeyPressed(KEY_ONE))   { currentDiffID = 0; gameStarted = true; waveSystem.skipToWave(20);}
             if (IsKeyPressed(KEY_TWO))   { currentDiffID = 1; gameStarted = true; }
             if (IsKeyPressed(KEY_THREE)) { currentDiffID = 2; gameStarted = true; }
             if (gameStarted){
@@ -102,7 +103,7 @@ int main() {
             EndDrawing();
             continue;
         }
-        if (waveSystem.isFinished() && enemies.empty()) {
+        if (waveSystem.getCurrentWaveNumber() == 20 && waveSystem.hasBossBeenSpawned() && enemies.empty()) {
             BeginDrawing ();
             ClearBackground(BLACK); 
             int total = (int)waveSystem.getInternalTimer();
@@ -147,6 +148,25 @@ int main() {
             float spawnX = player.getX() + cos(randomAngle) * PIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * PIXEL_SPAWN_RADIUS;
 
+        // Triệu hồi BOSS
+        if (waveSystem.shouldSpawnBoss()) {
+            Boss* b = new Boss(&player, 2, &enemySprites[2]); 
+            b->setPosition(spawnX, spawnY);
+        // áp chỉ số cho boss
+            float multiplier = waveSystem.getStatMultiplier();
+            float diffHPMult = waveSystem.getDifficultyHPMultiplier();
+            b->setHp((int)(b->getHp() * multiplier * diffHPMult * 2.0f)); // Boss máu trâu gấp đôi
+        
+            enemies.push_back(b);
+            entities.push_back(b);
+            waveSystem.markBossSpawned(); // Đánh dấu đã thả Boss thành công
+            TraceLog(LOG_INFO, ">>> BOSS SPAWNED! <<<");
+        } else {
+            bool spawnMod = true;
+            if (waveSystem.getCurrentWaveNumber() == 20) {
+                if (GetRandomValue(0, 100) > 30) spawnMod = false;
+            }
+            if (spawnMod) {
         // Create Enemy Object
             int type =waveSystem.getRandomEnemyType();
             Enemy* e = new Enemy(&player, type, &enemySprites[type]);
@@ -162,6 +182,8 @@ int main() {
         // Add to Management Lists
             enemies.push_back(e);
             entities.push_back(e);
+            }
+        }
         // Reset Timer
             spawnTimer = 0.0f;
         }
@@ -175,9 +197,11 @@ int main() {
 
         // Bullet-enemy collisions
         for (size_t i = 0; i < enemies.size(); i++) {
+            float hitboxRadius = 15.0f; 
+            if (waveSystem.getCurrentWaveNumber() == 20) hitboxRadius = 70.0f; // Boss to thì hitbox to
             for (size_t j = 0; j < bullets.size(); j++) {
                 if (!bullets[j]->getIsEnemyBullet() && distance(bullets[j]->getX(), bullets[j]->getY(), 
-                            enemies[i]->getX(), enemies[i]->getY()) < 15) {
+                            enemies[i]->getX(), enemies[i]->getY()) < hitboxRadius) {
                     enemies[i]->takeDamage(20);
                     bullets[j]->setX(-1000);
                     
@@ -198,6 +222,8 @@ int main() {
 
        // Skill-enemy collisions
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
+            float hitboxRadius = 15.0f;
+            if (waveSystem.getCurrentWaveNumber() == 20) hitboxRadius = 70.0f;
             if (distance(skill->getX(), skill->getY(), 
                         enemies[i]->getX(), enemies[i]->getY()) < 15) {
                 enemies[i]->takeDamage(10);
@@ -212,6 +238,8 @@ int main() {
 
         // Player-enemy collisions
         for (auto enemy : enemies) {
+            float playerHitbox = 20.0f;
+            if (waveSystem.getCurrentWaveNumber() == 20) playerHitbox = 50.0f; // Boss chạm nhẹ là mất máu
             if (distance(player.getX(), player.getY(), 
                         enemy->getX(), enemy->getY()) < 20) {
                 player.takeDamage(1);
