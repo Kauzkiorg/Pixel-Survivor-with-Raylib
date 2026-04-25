@@ -2,6 +2,7 @@
 #define WEAPON_H
 
 #include "raylib.h"
+#include "level.h"
 #include "../player/Player.h"
 #include "../enemy/Enemy.h"
 #include <vector>
@@ -21,12 +22,27 @@ struct WeaponProjectile {
 class Weapon {
 private:
     int weaponType;
+    int weaponLevel;
     int weaponDamage;
     float attackCooldown;
     float currentCooldownTimer;
+    float attackRange;
+    float projectileSpeed;
+    int projectileCount;
+    float explosionRadius;
+    bool doubleHit;
+
+    void updateWeaponStats();
+    void updateHammerStats();
+    void updateMagicWandStats();
+    void updateKnifeStats();
+    void updateSpellBookStats();
 public:
     Weapon(int type);
     const char* getName() const;
+    int getLevel() const;
+    void setLevel(int newLevel);
+    void levelUp();
     void attack(Player& player, const std::vector<Enemy*>& enemies,
                 std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition);
     void update(Player& player, const std::vector<Enemy*>& enemies,
