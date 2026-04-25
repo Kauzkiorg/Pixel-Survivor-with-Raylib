@@ -1,39 +1,34 @@
 #include "weapon.h"
 #include "raylib.h"
-#include <cmath>
-
-static Vector2 normalizeVector(Vector2 value) {
-    float length = sqrtf(value.x * value.x + value.y * value.y);
-    if (length <= 0.0f) {
-        return {0.0f, 0.0f};
-    }
-
-    return {value.x / length, value.y / length};
-}
-
-static Vector2 getShotDirection(Vector2 dir, int shotIndex, int projectileCount, float stepDegrees) {
-    if (projectileCount <= 1) {
-        return dir;
-    }
-
-    float startDegrees = -stepDegrees * (projectileCount - 1) / 2.0f;
-    float angleDegrees = startDegrees + stepDegrees * shotIndex;
-    float angleRadians = angleDegrees * DEG2RAD;
-    float cosValue = cosf(angleRadians);
-    float sinValue = sinf(angleRadians);
-
-    return {
-        dir.x * cosValue - dir.y * sinValue,
-        dir.x * sinValue + dir.y * cosValue
-    };
-}
+#include "raymath.h"
+#include <algorithm>
 
 // Weapon constructor
 Weapon::Weapon(int type) {
     weaponType = type;
-    weaponLevel = 1;
     currentCooldownTimer = 0.0f;
-    updateStats();
+    switch (weaponType) {
+        case 0: // Hammer
+            weaponDamage = 25;
+            attackCooldown = 1.2f;
+            break;
+        case 1: // Magic Wand
+            weaponDamage = 8;
+            attackCooldown = 0.8f;
+            break;
+        case 2: // Knife
+            weaponDamage = 6;
+            attackCooldown = 0.3f;
+            break;
+        case 3: // Spell Book
+            weaponDamage = 20;
+            attackCooldown = 1.0f;
+            break;
+        default:
+            weaponDamage = 0;
+            attackCooldown = 1.0f;
+            break;
+    }
 }
 
 // Get weapon name
@@ -44,97 +39,6 @@ const char* Weapon::getName() const {
         case 2: return "Knife";
         case 3: return "Spell Book";
         default: return "Unknown";
-    }
-}
-
-int Weapon::getLevel() const {
-    return weaponLevel;
-}
-
-void Weapon::setLevel(int newLevel) {
-    if (newLevel < 1) {
-        newLevel = 1;
-    }
-    if (newLevel > 10) {
-        newLevel = 10;
-    }
-
-    weaponLevel = newLevel;
-    updateStats();
-}
-
-void Weapon::levelUp() {
-    if (weaponLevel < 10) {
-        weaponLevel++;
-        updateStats();
-    }
-}
-
-void Weapon::updateStats() {
-    switch (weaponType) {
-        case 0:
-            weaponDamage = 25;
-            attackCooldown = 1.2f;
-            attackRange = 100.0f;
-            projectileSpeed = 0.0f;
-            projectileCount = 1;
-            explosionRadius = 0.0f;
-            doubleHit = false;
-            break;
-        case 1:
-            weaponDamage = 8;
-            attackCooldown = 0.8f;
-            attackRange = 400.0f;
-            projectileSpeed = 300.0f;
-            projectileCount = 1;
-            explosionRadius = 0.0f;
-            doubleHit = false;
-            break;
-        case 2:
-            weaponDamage = 6;
-            attackCooldown = 0.3f;
-            attackRange = 0.0f;
-            projectileSpeed = 500.0f;
-            projectileCount = 1;
-            explosionRadius = 0.0f;
-            doubleHit = false;
-            break;
-        case 3:
-            weaponDamage = 20;
-            attackCooldown = 1.0f;
-            attackRange = 0.0f;
-            projectileSpeed = 400.0f;
-            projectileCount = 1;
-            explosionRadius = 50.0f;
-            doubleHit = false;
-            break;
-        default:
-            weaponDamage = 0;
-            attackCooldown = 1.0f;
-            attackRange = 0.0f;
-            projectileSpeed = 0.0f;
-            projectileCount = 1;
-            explosionRadius = 0.0f;
-            doubleHit = false;
-            break;
-    }
-
-    for (int level = 1; level <= weaponLevel; level++) {
-        WeaponLevel bonus = getWeaponLevelData(weaponType, level);
-
-        weaponDamage += bonus.damageBonus;
-        attackRange += (float)bonus.rangeBonus;
-        attackCooldown *= bonus.cooldownMultiplier;
-        projectileCount += bonus.projectileBonus;
-        projectileSpeed += (float)bonus.speedBonus;
-        explosionRadius += (float)bonus.explosionRadiusBonus;
-        if (bonus.doubleHit) {
-            doubleHit = true;
-        }
-    }
-
-    if (attackCooldown < 0.05f) {
-        attackCooldown = 0.05f;
     }
 }
 
@@ -152,64 +56,40 @@ void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
 void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
                     std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition) {
     Vector2 pp = {player.getX(), player.getY()};
-    int totalDamage = weaponDamage + player.getDamage();
     
     switch (weaponType) {
         case 0: { // Hammer - simple circle AoE
             for (Enemy* e : enemies) {
-                if (Vector2Distance(pp, {e->getX(), e->getY()}) <= attackRange) {
-                    e->takeDamage(totalDamage);
-                    if (doubleHit) {
-                        e->takeDamage(totalDamage);
-                    }
-                }
+                if (Vector2Distance(pp, {e->getX(), e->getY()}) <= 100)
+                    e->takeDamage(weaponDamage + player.getDamage());
             }
-            projectiles.push_back({pp, {0,0}, 0.2f, attackRange, 0, ORANGE, 1, 0});
+            projectiles.push_back({pp, {0,0}, 0.2f, 100, 0, ORANGE, 1, 0});
             break;
         }
         
         case 1: { // Magic Wand - auto-target nearest enemy
-            for (int shot = 0; shot < projectileCount; shot++) {
-                Enemy* nearest = nullptr;
-                float minDist = attackRange;
-
-                for (Enemy* e : enemies) {
-                    float dist = Vector2Distance(pp, {e->getX(), e->getY()});
-                    if (dist <= minDist) {
-                        minDist = dist;
-                        nearest = e;
-                    }
-                }
-
-                if (nearest) {
-                    Vector2 dir = normalizeVector({nearest->getX() - pp.x, nearest->getY() - pp.y});
-                    Vector2 shotDir = getShotDirection(dir, shot, projectileCount, 8.0f);
-                    projectiles.push_back({pp, {shotDir.x * projectileSpeed, shotDir.y * projectileSpeed}, 2.0f, 6.0f,
-                        (float)totalDamage, PURPLE, 0, 0});
-                }
+            Enemy* nearest = nullptr;
+            float minDist = 400;
+            for (Enemy* e : enemies) {
+                float d = Vector2Distance(pp, {e->getX(), e->getY()});
+                if (d < minDist) { minDist = d; nearest = e; }
+            }
+            if (nearest) {
+                Vector2 dir = Vector2Normalize({nearest->getX() - pp.x, nearest->getY() - pp.y});
+                projectiles.push_back({pp, {dir.x*300, dir.y*300}, 2.0f, 6.0f, (float)(weaponDamage + player.getDamage()), PURPLE, 0, 0});
             }
             break;
         }
         
         case 2: { // Knife - shoots straight toward target
-            Vector2 dir = normalizeVector({targetPosition.x - pp.x, targetPosition.y - pp.y});
-
-            for (int shot = 0; shot < projectileCount; shot++) {
-                Vector2 shotDir = getShotDirection(dir, shot, projectileCount, 8.0f);
-                projectiles.push_back({pp, {shotDir.x * projectileSpeed, shotDir.y * projectileSpeed}, 1.0f, 4.0f,
-                    (float)totalDamage, SKYBLUE, 0, 0});
-            }
+            Vector2 dir = Vector2Normalize({targetPosition.x - pp.x, targetPosition.y - pp.y});
+            projectiles.push_back({pp, {dir.x*500, dir.y*500}, 1.0f, 4.0f, (float)(weaponDamage + player.getDamage()), SKYBLUE, 0, 0});
             break;
         }
         
         case 3: { // Spell Book - explosive projectile
-            Vector2 dir = normalizeVector({targetPosition.x - pp.x, targetPosition.y - pp.y});
-
-            for (int shot = 0; shot < projectileCount; shot++) {
-                Vector2 shotDir = getShotDirection(dir, shot, projectileCount, 10.0f);
-                projectiles.push_back({pp, {shotDir.x * projectileSpeed, shotDir.y * projectileSpeed}, 2.0f, 8.0f,
-                    (float)totalDamage, PURPLE, 2, explosionRadius});
-            }
+            Vector2 dir = Vector2Normalize({targetPosition.x - pp.x, targetPosition.y - pp.y});
+            projectiles.push_back({pp, {dir.x*400, dir.y*400}, 2.0f, 8.0f, (float)(weaponDamage + player.getDamage()), PURPLE, 2, 50.0f});
             break;
         }
     }
