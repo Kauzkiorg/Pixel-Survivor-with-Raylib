@@ -60,6 +60,7 @@ int main() {
     Weapon knife(2);      // Knife
     Weapon spellBook(3);  // Spell Book
     Weapon* currentWeapon = &hammer; // Start with hammer
+    vector<Weapon*> weapons = { &hammer, &magicWand, &knife, &spellBook };
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
@@ -204,7 +205,14 @@ int main() {
                 if (enemies[i]->getHp() <= 0) {
                     // Award score for killing enemy with skill
                     player.addScore(5); 
+                    int oldLevel = player.getLevel();
                     player.addExp(10);
+                    int newLevel = player.getLevel();
+                    for (int level = oldLevel; level < newLevel; level++) {
+                        for (Weapon* weapon : weapons) {
+                            weapon->levelUp();
+                        }
+                    }
                     removeEnemy(entities, enemies, i);
                 }
             }
@@ -236,7 +244,14 @@ int main() {
                     player.setHp(player.getHp() + 10); // Heal player by 20 HP
                 } else { // EXP item
                     int pointsEarned = items[k]->getExpValue();
+                    int oldLevel = player.getLevel();
                     player.addExp(pointsEarned);
+                    int newLevel = player.getLevel();
+                    for (int level = oldLevel; level < newLevel; level++) {
+                        for (Weapon* weapon : weapons) {
+                            weapon->levelUp();
+                        }
+                    }
                 }
                 removeEntity(entities, items[k]);
                 delete items[k];
@@ -294,6 +309,7 @@ int main() {
         
         // Draw current weapon name
         DrawText(TextFormat("Weapon: %s (1-4 to switch)", currentWeapon->getName()), 10, 105, 15, GREEN);
+        DrawText(TextFormat("Weapon LV: %d", currentWeapon->getLevel()), 10, 125, 15, ORANGE);
         
         // Draw EXP progress bar
         int expBarWidth = 800;
