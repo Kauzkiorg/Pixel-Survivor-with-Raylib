@@ -41,8 +41,21 @@ int main() {
     float hpSpawnTimer = 0.0f; // Track time for spawning HP items
 
     entities.push_back(&player);
-    Skill* skill = new Skill(&player, SkillType::LASER_BEAM);
-    entities.push_back(skill);
+    // --- KHỞI TẠO DANH SÁCH SKILLS ---
+    vector<Skill*> skills;
+
+    // Mày muốn chơi skill nào thì push_back cái đó vào
+    skills.push_back(new Skill(&player, SkillType::LASER_BEAM));
+    skills.push_back(new Skill(&player, SkillType::HAMMER));
+    skills.push_back(new Skill(&player, SkillType::SHIELD));
+    skills.push_back(new Skill(&player, SkillType::SHURIKEN));
+    skills.push_back(new Skill(&player, SkillType::THUNDER_STRIKE));
+
+    // Thêm các skill vào danh sách entities để nó tự gọi hàm draw()
+    for (auto s : skills) {
+        entities.push_back(s);
+    }
+    
 
     while (!WindowShouldClose()) { 
         hpSpawnTimer += GetFrameTime();
@@ -102,7 +115,7 @@ int main() {
         // Spawn logic: Every second, spawn an enemy at a random angle around the player, at a fixed radius
         const float FIXEL_SPAWN_RADIUS = 400.0f;
         spawnTimer += GetFrameTime();
-        if (spawnTimer >= 0.5f) {
+        if (spawnTimer >= 0.0001f) {
             float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
             float spawnX = player.getX() + cos(randomAngle) * FIXEL_SPAWN_RADIUS;
             float spawnY = player.getY() + sin(randomAngle) * FIXEL_SPAWN_RADIUS;
@@ -171,17 +184,18 @@ int main() {
             }
         }
         
-        float dt = GetFrameTime();
+        
         player.update();
-        skill->update(); // CỰC KỲ QUAN TRỌNG
-       // Skill logic
-        skill->triggerLaser(enemies);
-        skill->triggerThunder(enemies);
-        
-        // Va chạm đặc biệt của Shield và Hammer
-        skill->triggerShieldCollision(enemies);
-        skill->triggerHammerCollision(enemies);
-        
+        for (auto s : skills) {
+            s->update(); // Cập nhật vị trí, timer của từng skill
+            
+            // Gọi tất cả trigger, skill nào đúng Type của nó thì nó mới chạy
+            s->triggerLaser(enemies);
+            s->triggerThunder(enemies);
+            s->triggerShieldCollision(enemies);
+            s->triggerHammerCollision(enemies);
+            s->triggerShurikenCollision(enemies);
+        }
 
 
         // KIỂM TRA QUÁI CHẾT (Nếu HP <= 0 thì xóa)
@@ -209,11 +223,7 @@ int main() {
                 j--;
             }
         }
-        //sheild
         
-        skill->triggerShieldCollision(enemies);
-
-        //bua
         // Item collection
         for (size_t k =0; k < items.size(); k++){
             float dist = distance(player.getX(), player.getY(), items[k]->getX(), items[k]->getY());
