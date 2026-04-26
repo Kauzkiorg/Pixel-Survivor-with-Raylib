@@ -15,8 +15,8 @@ struct WeaponProjectile {
     float radius;
     float damage;
     Color color;
-    int type;       // 0 = normal, 1 = slash visual, 2 = explosion
-    float angle;    // For slash: direction angle; For explosion: radius
+    int type;       // 0 = normal, 1 = hammer visual, 2 = explosion
+    float angle;    // Explosion radius when type = 2
 };
 
 class Weapon {

@@ -16,7 +16,18 @@ struct WeaponLevel {
     bool doubleHit;
 };
 
+struct WeaponStats {
+    int damage;
+    float cooldown;
+    float range;
+    float speed;
+    int count;
+    float explosionRadius;
+    bool doubleHit;
+};
+
 const char* getWeaponLevelWeaponName(int weaponType);
 WeaponLevel getWeaponLevelData(int weaponType, int level);
+WeaponStats getWeaponStats(int weaponType, int weaponLevel);
 
 #endif // WEAPON_LEVEL_H

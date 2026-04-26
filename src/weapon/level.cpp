@@ -1,5 +1,16 @@
 #include "level.h"
 
+namespace {
+
+const WeaponStats BASE_STATS[] = {
+    {25, 1.2f, 100.0f, 300.0f, 1, 50.0f, false},
+    {8, 0.8f, 400.0f, 300.0f, 1, 50.0f, false},
+    {6, 0.3f, 100.0f, 500.0f, 1, 50.0f, false},
+    {20, 1.0f, 100.0f, 400.0f, 1, 50.0f, false}
+};
+
+}
+
 const char* getWeaponLevelWeaponName(int weaponType) {
     switch (weaponType) {
         case 0: return "Hammer";
@@ -246,4 +257,22 @@ WeaponLevel getWeaponLevelData(int weaponType, int level) {
     }
 
     return data;
+}
+
+WeaponStats getWeaponStats(int weaponType, int weaponLevel) {
+    WeaponStats stats = {0, 1.0f, 100.0f, 300.0f, 1, 50.0f, false};
+    if (weaponType >= 0 && weaponType < 4) stats = BASE_STATS[weaponType];
+
+    for (int level = 1; level <= weaponLevel; level++) {
+        WeaponLevel data = getWeaponLevelData(weaponType, level);
+        stats.damage += data.damageBonus;
+        stats.range += data.rangeBonus;
+        stats.cooldown *= data.cooldownMultiplier;
+        stats.count += data.projectileBonus;
+        stats.speed += data.speedBonus;
+        stats.explosionRadius += data.explosionRadiusBonus;
+        if (data.doubleHit) stats.doubleHit = true;
+    }
+
+    return stats;
 }
