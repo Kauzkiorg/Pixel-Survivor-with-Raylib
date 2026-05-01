@@ -1,9 +1,11 @@
 #include "raylib.h"
+#include "raymath.h"
 #include <vector>
 #include <algorithm>
 #include <cmath>
 
 #include "core/Entity.h"
+#include "core/CollisionMap.h"
 #include "player/Player.h"
 #include "enemy/Enemy.h"
 #include "skill/Skill.h"
@@ -15,413 +17,400 @@
 #include "upgrade/UpgradeSystem.h"
 using namespace std;
 
+// Tai sprite cho 5 loai enemy vao mang dung chung
+void loadEnemySprites(Texture2D sprites[]) {
+    const char* paths[5] = {
+        "Graphics/Ultron-Perler-Bead-Pattern-removebg-preview.png",
+        "Graphics/Venom-removebg-preview.png",
+        "Graphics/Supreme-Leader-Ultron-removebg-preview.png",
+        "Graphics/Loki-removebg-preview.png",
+        "Graphics/Thanos Perler Bead Pattern.png"
+    };
+    for (int i = 0; i < 5; i++) sprites[i] = LoadTexture(paths[i]);
+}
+
+// Doc phim 1 2 3 de chon do kho
+int getDifficultyChoice() {
+    if (IsKeyPressed(KEY_ONE)) return 0;
+    if (IsKeyPressed(KEY_TWO)) return 1;
+    if (IsKeyPressed(KEY_THREE)) return 2;
+    return -1;
+}
+
+// Ve man hinh chon difficulty truoc khi vao tran
+void drawDifficultyScreen() {
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawText("Select Difficulty Level:", 655, 250, 52, GRAY);
+    DrawText("[1] EASY - Low Density / Weak Enemies", 520, 390, 46, GREEN);
+    DrawText("[2] HARD - Normal Density / Medium Enemies", 520, 485, 46, ORANGE);
+    DrawText("[3] HELL - High Density / Elite Enemies", 520, 580, 46, RED);
+    DrawText("Press number key to choose difficulty.", 625, 735, 34, DARKGRAY);
+    EndDrawing();
+}
+
+// Ve title screen va chu nhap nhay moi vao game
+void drawTitleScreen(Texture2D mainScreen) {
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawTexture(mainScreen, 0, 0, WHITE);
+    if (((int)(GetTime() * 2.0)) % 2 == 0) {
+        DrawText("PRESS SPACE TO PLAY", 660, 940, 40, WHITE);
+    } else {
+        
+    }
+    EndDrawing();
+}
+
+// Ve phan world ben trong camera cua player
+void drawWorld(Player& player, Texture2D floorTexture, Texture2D wallsTexture, const vector<Entity*>& entities, const vector<Skill*>& skills, const vector<WeaponProjectile>& weaponProjectiles) {
+    BeginMode2D(player.getCamera());
+    DrawTexture(floorTexture, 0, 0, WHITE);
+    DrawTexture(wallsTexture, 0, 0, WHITE);
+    for (auto e : entities) e->draw();
+    for (auto s : skills) s->draw();
+    drawProjectiles(weaponProjectiles);
+    EndMode2D();
+}
+
+// Ap dung nang cap da chon vao skill hoac vu khi
+void applyUpgrade(UpgradeSystem& upgradeSystem, vector<Skill*>& allSkills, vector<Skill*>& skillInventory, vector<Weapon*>& allWeapons, vector<Weapon*>& weaponInventory, Weapon*& currentWeapon) {
+    UpgradeOption selected = upgradeSystem.getSelectedUpgrade();
+
+    if (selected.isSkill) {
+        if (selected.isNewSkill && selected.skillType < (int)allSkills.size() && (int)skillInventory.size() < 3) {
+            Skill* skill = allSkills[selected.skillType];
+            skill->setLevel(1);
+            skillInventory.push_back(skill);
+        } else if (selected.skillPtr != nullptr) {
+            selected.skillPtr->setLevel(selected.skillPtr->getLevel() + 1);
+        }
+        return;
+    }
+
+    if (selected.weaponType < 0) return;
+    if (selected.isNewWeapon && selected.weaponType < (int)allWeapons.size() && (int)weaponInventory.size() < 2) {
+        Weapon* weapon = allWeapons[selected.weaponType];
+        weapon->setLevel(1);
+        weaponInventory.push_back(weapon);
+        if (currentWeapon == nullptr) currentWeapon = weapon;
+    } else if (selected.weaponPtr != nullptr) {
+        selected.weaponPtr->setLevel(selected.weaponPtr->getLevel() + 1);
+    }
+}
+
+// Neu menu upgrade dang mo thi update, draw va tam dung gameplay
+bool updateUpgradeMenu(Player& player, UpgradeSystem& upgradeSystem, vector<Skill*>& allSkills, vector<Skill*>& skillInventory, vector<Weapon*>& allWeapons, vector<Weapon*>& weaponInventory, Weapon*& currentWeapon, Texture2D floorTexture, Texture2D wallsTexture, const vector<Entity*>& entities, const vector<WeaponProjectile>& weaponProjectiles) {
+    if (!upgradeSystem.isMenuActive()) return false;
+    upgradeSystem.update();
+    if (!upgradeSystem.isMenuActive() && !upgradeSystem.isGamePaused()) applyUpgrade(upgradeSystem, allSkills, skillInventory, allWeapons, weaponInventory, currentWeapon);
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+    drawWorld(player, floorTexture, wallsTexture, entities, skillInventory, weaponProjectiles);
+    DrawFPS(24, 18);
+    DrawText(TextFormat("HP: %d/%d", player.getHp(), player.getMaxHp()), 24, 54, 36, WHITE);
+    DrawText(TextFormat("LV: %d", player.getLevel()), 24, 99, 36, YELLOW);
+    upgradeSystem.draw();
+    EndDrawing();
+    return true;
+}
+
+// Spawn item hoi mau dinh ky tren map
+void spawnHpItem(vector<Item*>& items, vector<Entity*>& entities) {
+    Item* hpItem = new Item(GetRandomValue(120, 1800), GetRandomValue(90, 950), 0, 1);
+    items.push_back(hpItem);
+    entities.push_back(hpItem);
+}
+
+// Ve man hinh game over khi player het mau
+bool drawGameOver(Player& player, float gameTimer) {
+    if (player.getHp() > 0) return false;
+    int mins = (int)(gameTimer / 60), secs = (int)gameTimer % 60;
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawText("GAME OVER", 722, 430, 72, RED);
+    DrawText(TextFormat("SCORE: %d", player.getScore()), 850, 556, 36, WHITE);
+    DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 734, 628, 36, WHITE);
+    EndDrawing();
+    return true;
+}
+
+// Ve man hinh chien thang khi qua wave cuoi va diet boss
+bool drawVictory(WaveManager& waveSystem, vector<Enemy*>& enemies, Player& player) {
+    if (waveSystem.getCurrentWaveNumber() != 20 || !waveSystem.hasBossBeenSpawned() || !enemies.empty()) return false;
+    int total = (int)waveSystem.getInternalTimer(), mins = total / 60, secs = total % 60;
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawText("VICTORY!", 660, 180, 108, GOLD);
+    DrawText("CONGRATULATIONS!", 612, 300, 54, WHITE);
+    DrawText(TextFormat("FINAL SCORE: %d", player.getScore()), 756, 420, 40, WHITE);
+    DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 732, 492, 40, WHITE);
+    EndDrawing();
+    return true;
+}
+
+// Enemy ranged se tao bullet huong ve player khi den nhip ban
+void fireEnemyBullets(vector<Enemy*>& enemies, Player& player, vector<Bullet*>& bullets, vector<Entity*>& entities) {
+    for (auto e : enemies) {
+        if (e->getEnemyType() != 3 || !e->canShoot()) continue;
+        Bullet* bullet = new Bullet(e->getX(), e->getY(), player.getX(), player.getY(), e->getDamage());
+        bullet->setIsEnemyBullet(true);
+        bullets.push_back(bullet);
+        entities.push_back(bullet);
+    }
+}
+
+// Spawn quai theo wave hien tai, co xu ly rieng cho boss
+void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySprites[], vector<Enemy*>& enemies, vector<Entity*>& entities) {
+    const float PIXEL_SPAWN_RADIUS = 960.0f;
+    float angle = GetRandomValue(0, 360) * (PI / 180.0f);
+    float spawnX = player.getX() + cos(angle) * PIXEL_SPAWN_RADIUS;
+    float spawnY = player.getY() + sin(angle) * PIXEL_SPAWN_RADIUS;
+    float multiplier = waveSystem.getStatMultiplier();
+    float diffHPMult = waveSystem.getDifficultyHPMultiplier();
+
+    if (waveSystem.shouldSpawnBoss()) {
+        Boss* boss = new Boss(&player, 0, &enemySprites[4]);
+        boss->setPosition(spawnX, spawnY);
+        boss->setDamage(waveSystem.getCurrentWaveDamage() * 3);
+        boss->setHp((int)(boss->getHp() * multiplier * diffHPMult * 2.0f));
+        enemies.push_back(boss);
+        entities.push_back(boss);
+        waveSystem.markBossSpawned();
+        TraceLog(LOG_INFO, ">>> BOSS SPAWNED! <<<");
+        return;
+    }
+
+    if (waveSystem.getCurrentWaveNumber() == 20 && GetRandomValue(0, 100) > 30) return;
+    int type = waveSystem.getRandomEnemyType();
+    Enemy* enemy = new Enemy(&player, type, &enemySprites[type]);
+    enemy->setPosition(spawnX, spawnY);
+    enemy->setHp((int)(enemy->getHp() * multiplier * diffHPMult));
+    enemy->setSpeed(enemy->getSpeed() * waveSystem.getDifficultySpeedMultiplier());
+    enemy->setDamage(waveSystem.getCurrentWaveDamage());
+    enemies.push_back(enemy);
+    entities.push_back(enemy);
+}
+
 int main() {
-    InitWindow(1920, 1040, "PIXEL SURVIVOR");
+    // Khoi tao cua so game, FPS va collision map
+    InitWindow(1920, 1040, "Arcane Rampage");
+    SetExitKey(KEY_NULL);
     SetTargetFPS(60);
-    // gắn đồ họa
+    InitCollisionMap("Graphics/gameBgCollision.png");
+
     Texture2D enemySprites[5];
-    enemySprites[0] = LoadTexture("Graphics/Ultron-Perler-Bead-Pattern-removebg-preview.png");
-    enemySprites[1] = LoadTexture("Graphics/Venom-removebg-preview.png");
-    enemySprites[2] = LoadTexture("Graphics/Supreme-Leader-Ultron-removebg-preview.png");
-    enemySprites[3] = LoadTexture("Graphics/Loki-removebg-preview.png");
-    enemySprites[4] = LoadTexture("Graphics/Thanos Perler Bead Pattern.png");
- 
+    loadEnemySprites(enemySprites);
+    Texture2D floorTexture = LoadTexture("Graphics/Floor.png");
+    Texture2D wallsTexture = LoadTexture("Graphics/Walls.png");
+    Texture2D mainScreenTexture = LoadTexture("Graphics/Main screen.png");
+
+    // Toan bo state runtime chinh cua tran dau
     Player player;
     WaveManager waveSystem;
-    vector<Entity*> entities;
+    vector<Entity*> entities = {&player};
     vector<Enemy*> enemies;
     vector<Bullet*> bullets;
     vector<Item*> items;
-    vector<WeaponProjectile> weaponProjectiles; // Weapon projectile system
-    float enemyFireTimer=0; // Track cooldown for ranged enemies
-    float spawnTimer = 0.0f; // Track time for spawning enemies
-    float hpSpawnTimer = 0.0f; // Track time for spawning HP items
-    //nút dừng game
-    bool isPaused = false; // Trạng thái game
-    Rectangle pauseButton = { 740, 10, 50, 50 }; // Vị trí nút Pause (Góc trên bên phải)
-    float gameTimer = 0.0f; // Track total survival time
-    int currentDiffID  = -1 ;// trạng thái chờ chọn màn chơi
-    bool gameStarted = false; // điều kiện để bắt đầu cho quái ra chơi
-    
-    // Camera setup
-    Camera2D camera = { 0 };
-    camera.target = (Vector2){ player.getX(), player.getY() };
-    camera.offset = (Vector2){ 960, 520 }; // Center of screen
-    camera.rotation = 0.0f;
-    camera.zoom = 1.0f;
+    vector<WeaponProjectile> weaponProjectiles;
+    float spawnTimer = 0.0f;
+    float hpSpawnTimer = 0.0f;
+    bool isPaused = false;
+    Rectangle pauseButton = { 1850, 10, 50, 50 };
+    float gameTimer = 0.0f;
+    int currentDiffID = -1;
+    bool gameStarted = false;
+    bool showTitleScreen = true;
 
-    entities.push_back(&player);
-    // --- KHỞI TẠO DANH SÁCH SKILLS ---
-    vector<Skill*> skills;
+    // Danh sach skill tong va inventory skill dang trang bi
+    vector<Skill*> allSkills = {
+        new Skill(&player, SKILL_LASER_BEAM),
+        new Skill(&player, SKILL_THUNDER_STRIKE),
+        new Skill(&player, SKILL_SHURIKEN),
+        new Skill(&player, SKILL_SHIELD),
+        new Skill(&player, SKILL_HAMMER)
+    };
+    vector<Skill*> skillInventory;
+    for (auto s : allSkills) s->setLevel(0);
 
-    // Mày muốn chơi skill nào thì push_back cái đó vào
-    skills.push_back(new Skill(&player, SkillType::LASER_BEAM));
-    skills.push_back(new Skill(&player, SkillType::HAMMER));
-    skills.push_back(new Skill(&player, SkillType::SHIELD));
-    skills.push_back(new Skill(&player, SkillType::SHURIKEN));
-    skills.push_back(new Skill(&player, SkillType::THUNDER_STRIKE));
-
-    // Thêm các skill vào danh sách entities để nó tự gọi hàm draw()
-    for (auto s : skills) {
-        entities.push_back(s);
-    }
-
-    // Create weapons once and keep their state across frames
-    Weapon hammer(0);
-    Weapon magicWand(1);
-    Weapon knife(2);
-    Weapon spellBook(3);
+    Weapon hammer(0), magicWand(1), knife(2), spellBook(3);
     Weapon* currentWeapon = nullptr;
-
     UpgradeSystem upgradeSystem;
-
     hammer.setLevel(0);
     magicWand.setLevel(0);
     knife.setLevel(0);
     spellBook.setLevel(0);
 
-    vector<Weapon*> allWeapons;
-    allWeapons.push_back(&hammer);
-    allWeapons.push_back(&magicWand);
-    allWeapons.push_back(&knife);
-    allWeapons.push_back(&spellBook);
-
+    vector<Weapon*> allWeapons = {&hammer, &magicWand, &knife, &spellBook};
     vector<Weapon*> weaponInventory;
     bool shouldShowUpgrade = true;
     int previousLevel = 1;
-    
-    while (!WindowShouldClose()) { 
 
-//  Kiểm tra bấm nút Pause hoặc bấm phím ESC
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            if (CheckCollisionPointRec(GetMousePosition(), pauseButton)) {
-                isPaused = !isPaused; // Đảo trạng thái
-            }
+    // Vong lap game chinh
+    while (!WindowShouldClose()) {
+        if (showTitleScreen) {
+            if (IsKeyPressed(KEY_SPACE)) showTitleScreen = false;
+            drawTitleScreen(mainScreenTexture);
+            continue;
         }
+
+        // Pause bang nut tren UI hoac phim ESC
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), pauseButton)) isPaused = !isPaused;
         if (IsKeyPressed(KEY_ESCAPE)) isPaused = !isPaused;
 
         if (!isPaused) {
-                
-
-        if (!gameStarted){
-            // dùng phím chọn qua chế độ chơi nào
-            if (IsKeyPressed(KEY_ONE))   { currentDiffID = 0; gameStarted = true; }
-            if (IsKeyPressed(KEY_TWO))   { currentDiffID = 1; gameStarted = true; }
-            if (IsKeyPressed(KEY_THREE)) { currentDiffID = 2; gameStarted = true; }
-            if (gameStarted){
-                waveSystem.setDifficulty(currentDiffID); 
+            if (!gameStarted) {
+                // Bat buoc chon difficulty truoc khi gameplay bat dau
+                currentDiffID = getDifficultyChoice();
+                gameStarted = currentDiffID >= 0;
+                if (gameStarted) waveSystem.setDifficulty(currentDiffID);
+                else drawDifficultyScreen();
+                if (!gameStarted) continue;
             }
-            BeginDrawing();
-            ClearBackground(BLACK);
-            DrawText("Select Difficulty Level:", 672, 220, 36, GRAY);
-            DrawText("[1] EASY - Low Density / Weak Enemies", 576, 320, 36, GREEN);
-            DrawText("[2] HARD - Standard Operations", 576, 390, 36, ORANGE);
-            DrawText("[3] HELL - High Density / Elite Enemies", 576, 460, 36, RED);
-        
-            DrawText("Press key to deploy...", 720, 620, 27, DARKGRAY);
-            EndDrawing();
-            continue;
 
-        }
-        float dt = GetFrameTime();
-        
-        // Check if upgrade menu is active
-        if (upgradeSystem.isMenuActive()) {
-            upgradeSystem.update();
-            
-            // If menu just closed, apply the selected upgrade
-            if (!upgradeSystem.isMenuActive() && !upgradeSystem.isGamePaused()) {
-                UpgradeOption selected = upgradeSystem.getSelectedUpgrade();
-                if (selected.weaponType >= 0) {
-                    // Apply the upgrade
-                    if (selected.isNewWeapon) {
-                        // Find the weapon and unlock it
-                        if (selected.weaponType < (int)allWeapons.size() && (int)weaponInventory.size() < 2) {
-                            Weapon* newWeapon = allWeapons[selected.weaponType];
-                            newWeapon->setLevel(1);
-                            weaponInventory.push_back(newWeapon);
-                            if (currentWeapon == nullptr) currentWeapon = newWeapon;
-                        }
-                    } else if (selected.weaponPtr != nullptr) {
-                        selected.weaponPtr->setLevel(selected.weaponPtr->getLevel() + 1);
+            float dt = GetFrameTime();
+            if (updateUpgradeMenu(player, upgradeSystem, allSkills, skillInventory, allWeapons, weaponInventory, currentWeapon, floorTexture, wallsTexture, entities, weaponProjectiles)) continue;
+
+            // Moi lan len level thi mo them 1 lan upgrade menu
+            if (player.getLevel() > previousLevel) {
+                shouldShowUpgrade = true;
+                previousLevel = player.getLevel();
+            }
+            if (shouldShowUpgrade) {
+                upgradeSystem.showUpgradeMenu(allWeapons, allSkills, (int)weaponInventory.size(), 2, (int)skillInventory.size(), 3);
+                shouldShowUpgrade = false;
+                continue;
+            }
+
+            // Dinh ky spawn item HP moi 10 giay
+            hpSpawnTimer += dt;
+            if (hpSpawnTimer >= 10.0f) {
+                spawnHpItem(items, entities);
+                hpSpawnTimer = 0.0f;
+            }
+            if (drawGameOver(player, gameTimer)) {
+                if (IsKeyPressed(KEY_ESCAPE)) break;
+                continue;
+            }
+            if (drawVictory(waveSystem, enemies, player)) {
+                if (IsKeyPressed(KEY_ESCAPE)) break;
+                continue;
+            }
+
+            waveSystem.update(dt);
+            gameTimer += dt;
+
+            // Cho phep doi nhanh giua 2 vu khi
+            if (IsKeyPressed(KEY_ONE) && weaponInventory.size() > 0) currentWeapon = weaponInventory[0];
+            if (IsKeyPressed(KEY_TWO) && weaponInventory.size() > 1) currentWeapon = weaponInventory[1];
+
+            // Huong tan cong dua theo vi tri chuot trong world
+            Vector2 attackTarget = GetScreenToWorld2D(GetMousePosition(), player.getCamera());
+            if (currentWeapon != nullptr) currentWeapon->update(player, enemies, weaponProjectiles, attackTarget, IsMouseButtonDown(MOUSE_BUTTON_LEFT));
+            updateProjectiles(weaponProjectiles, enemies, dt);
+
+            // Update toan bo entity va sau do cho enemy ranged ban dan
+            for (auto e : entities) e->update();
+            fireEnemyBullets(enemies, player, bullets, entities);
+
+            // Spawn quai theo nhip cua wave manager
+            spawnTimer += dt;
+            if (spawnTimer >= waveSystem.getSpawnInterval()) {
+                spawnEnemyWave(waveSystem, player, enemySprites, enemies, entities);
+                spawnTimer = 0.0f;
+            }
+
+            // Dan co ban trung enemy se gay sat thuong truc tiep
+            for (size_t i = 0; i < enemies.size(); i++) {
+                float hitboxRadius = waveSystem.getCurrentWaveNumber() == 20 ? 70.0f : 15.0f;
+                for (size_t j = 0; j < bullets.size(); j++) {
+                    if (!bullets[j]->getIsEnemyBullet() &&
+                        Vector2Distance({bullets[j]->getX(), bullets[j]->getY()}, {enemies[i]->getX(), enemies[i]->getY()}) < hitboxRadius) {
+                        enemies[i]->takeDamage(20);
+                        bullets[j]->setX(-1000);
                     }
                 }
             }
-            
-            // Draw upgrade menu (it handles its own drawing)
-            BeginDrawing();
-            ClearBackground(BLACK);
-            
-            // Draw game behind the overlay
-            BeginMode2D(player.getCamera());
-            for (auto e : entities) e->draw();
-            drawProjectiles(weaponProjectiles);
-            EndMode2D();
-            
-            // Draw UI elements
-            DrawFPS(24, 18);
-            DrawText(TextFormat("HP: %d/%d", player.getHp(), player.getMaxHp()), 24, 54, 36, WHITE);
-            DrawText(TextFormat("LV: %d", player.getLevel()), 24, 99, 36, YELLOW);
-            
-            upgradeSystem.draw();
-            
-            EndDrawing();
-            continue;  // Skip normal game update when menu is active
-        }
-        
-        // Check for level up (trigger upgrade menu)
-        if (player.getLevel() > previousLevel) {
-            shouldShowUpgrade = true;
-            previousLevel = player.getLevel();
-        }
-        
-        // Show upgrade menu if needed
-        if (shouldShowUpgrade) {
-            upgradeSystem.showUpgradeMenu(allWeapons, (int)weaponInventory.size(), 2);
-            shouldShowUpgrade = false;
-            continue;  // Skip this frame's game update
-        }
-        hpSpawnTimer += dt;
-        if (hpSpawnTimer >= 10.0f) { // Spawn HP item every 10 seconds
-            float randomX = GetRandomValue(120, 1800);
-            float randomY = GetRandomValue(90, 950);
-            Item* hpItem = new Item(randomX, randomY, 0, 1); // ID 1 for HP item
-            items.push_back(hpItem);
-            entities.push_back(hpItem);
-            hpSpawnTimer = 0.0f;
-        }
-        if (player.getHp() <= 0) {
-            BeginDrawing();
-            ClearBackground(BLACK);
-            // Format time as MM:SS
-            int mins = (int)(gameTimer / 60);
-            int secs = (int)(gameTimer) % 60;
-            DrawText("GAME OVER", 672, 430, 72, RED);
-            DrawText(TextFormat("SCORE: %d", player.getScore()), 840, 556, 36, WHITE);
-            // Display survival time in MM:SS format
-            DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 684, 628, 36, WHITE);
-            EndDrawing();
-            continue;
-        }
-        // TẠO MÀN HÌNH KHI HOÀN THÀNH MÀN CHƠI
-        if (waveSystem.getCurrentWaveNumber() == 20 && waveSystem.hasBossBeenSpawned() && enemies.empty()) {
-            BeginDrawing ();
-            ClearBackground(BLACK); 
-            int total = (int)waveSystem.getInternalTimer();
-            int mins = (int)(total / 60);
-            int secs = (int)(total % 60);
 
-            DrawText("VICTORY!", 660, 180, 108, GOLD);
-            DrawText("CONGRATULATIONS!", 612, 300, 54, WHITE);
-            DrawText(TextFormat("FINAL SCORE: %d", player.getScore()), 756, 420, 40, WHITE);
-            DrawText(TextFormat("TIME SURVIVED: %02d:%02d", mins, secs), 732, 492, 40, WHITE);
-            EndDrawing();
-            if (IsKeyPressed(KEY_ESCAPE)) break;
-            continue;
-        }
-        waveSystem.update(dt);
-        gameTimer += dt; // Update game timer
+            player.update();
+            for (auto s : skillInventory) s->update(enemies);
 
-        // Switch weapons with number keys
-        if (IsKeyPressed(KEY_ONE) && weaponInventory.size() > 0) currentWeapon = weaponInventory[0];
-        if (IsKeyPressed(KEY_TWO) && weaponInventory.size() > 1) currentWeapon = weaponInventory[1];
-
-        Vector2 mouseScreenPos = GetMousePosition();
-        Vector2 attackTarget = GetScreenToWorld2D(mouseScreenPos, player.getCamera());
-        bool isAttacking = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-
-        // Update weapons
-        if (currentWeapon != nullptr) {
-            currentWeapon->update(player, enemies, weaponProjectiles, attackTarget, isAttacking);
-        }
-        updateProjectiles(weaponProjectiles, enemies, dt);
-        
-        // Update
-        for (auto e : entities) e->update();
-        // RANGED ENEMY LOGIC (Type 3)
-            enemyFireTimer += dt;
-        for (auto e : enemies) {
-            if (e->getEnemyType() == 3 && e->canShoot()) { 
-                int bulletDmg = e->getDamage();
-                        Bullet* eb = new Bullet(e->getX(), e->getY(), player.getX(), player.getY(),bulletDmg);
-                        eb->setIsEnemyBullet(true);
-                        bullets.push_back(eb);
-                        entities.push_back(eb);
-                } 
+            // Enemy cham vao player se gay damage contact
+            for (auto enemy : enemies) {
+                if (Vector2Distance({player.getX(), player.getY()}, {enemy->getX(), enemy->getY()}) < 30.0f) player.takeDamage(enemy->getDamage());
             }
 
-        // Spawn enemies
-        // Spawn logic: spawn an enemy at a random angle around the player, at a fixed radius
-        const float PIXEL_SPAWN_RADIUS = 960.0f;
-        if (!waveSystem.isFinished())
-        spawnTimer += GetFrameTime();
-        // Calculate Spawn Position
-        if (spawnTimer >= waveSystem.getSpawnInterval()) {
-            float randomAngle = GetRandomValue(0, 360) * (PI / 180.0f);
-            float spawnX = player.getX() + cos(randomAngle) * PIXEL_SPAWN_RADIUS;
-            float spawnY = player.getY() + sin(randomAngle) * PIXEL_SPAWN_RADIUS;
-
-        // Triệu hồi BOSS
-        if (waveSystem.shouldSpawnBoss()) {
-            Boss* b = new Boss(&player, 0, &enemySprites[4]); 
-            b->setPosition(spawnX, spawnY);
-            b->setDamage(waveSystem.getCurrentWaveDamage() * 3);
-        // áp chỉ số cho boss
-            float multiplier = waveSystem.getStatMultiplier();
-            float diffHPMult = waveSystem.getDifficultyHPMultiplier();
-            b->setHp((int)(b->getHp() * multiplier * diffHPMult * 2.0f)); // Boss máu trâu gấp đôi
-        
-            enemies.push_back(b);
-            entities.push_back(b);
-            waveSystem.markBossSpawned(); // Đánh dấu đã thả Boss thành công
-            TraceLog(LOG_INFO, ">>> BOSS SPAWNED! <<<");
-        } else {
-            bool spawnMod = true;
-            if (waveSystem.getCurrentWaveNumber() == 20) {
-                if (GetRandomValue(0, 100) > 30) spawnMod = false;
-            }
-            if (spawnMod) {
-        // Create Enemy Object
-            int type =waveSystem.getRandomEnemyType();
-            Enemy* e = new Enemy(&player, type, &enemySprites[type]);
-
-        // Set Position and Apply Multipliers
-            e->setPosition(spawnX, spawnY);
-            
-            float multiplier = waveSystem.getStatMultiplier();
-            float diffHPMult = waveSystem.getDifficultyHPMultiplier();
-            float diffSpMult = waveSystem.getDifficultySpeedMultiplier();
-            e->setHp((int)(e->getHp() * multiplier * diffHPMult));// Multiply both here
-            e->setSpeed(e->getSpeed() * diffSpMult);  //Add speed multiplier
-            e->setDamage(waveSystem.getCurrentWaveDamage()); 
-        // Add to Management Lists
-            enemies.push_back(e);
-            entities.push_back(e);
-            }
-        }
-        // Reset Timer
-            spawnTimer = 0.0f;
-        }
-
-
-        // Bullet-enemy collisions
-        for (size_t i = 0; i < enemies.size(); i++) {
-            float hitboxRadius = 15.0f; 
-            if (waveSystem.getCurrentWaveNumber() == 20) hitboxRadius = 70.0f; // Boss to thì hitbox to
+            // Dan enemy trung player se bi xoa khoi scene
             for (size_t j = 0; j < bullets.size(); j++) {
-                if (!bullets[j]->getIsEnemyBullet() && distance(bullets[j]->getX(), bullets[j]->getY(), 
-                    enemies[i]->getX(), enemies[i]->getY()) < hitboxRadius) {
-                    
-                    enemies[i]->takeDamage(20); // Chỉ trừ máu
-                    bullets[j]->setX(-1000);    // Đánh dấu xóa đạn
+                if (bullets[j]->getIsEnemyBullet() &&
+                    Vector2Distance({bullets[j]->getX(), bullets[j]->getY()}, {player.getX(), player.getY()}) < 15.0f) {
+                    player.takeDamage(bullets[j]->getDamage());
+                    removeEntity(entities, bullets[j]);
+                    bullets.erase(bullets.begin() + j);
+                    j--;
+                }
+            }
+
+            // Item co the het han hoac duoc player nhat len
+            for (size_t k = 0; k < items.size(); k++) {
+                if (items[k]->isExpired()) {
+                    removeEntity(entities, items[k]);
+                    delete items[k];
+                    items.erase(items.begin() + k);
+                    k--;
+                    continue;
+                }
+
+                if (Vector2Distance({player.getX(), player.getY()}, {items[k]->getX(), items[k]->getY()}) < 30.0f) {
+                    if (items[k]->getID() == 1) player.setHp(player.getHp() + 10);
+                    else {
+                        int oldLevel = player.getLevel();
+                        player.addExp(items[k]->getExpValue());
+                        if (player.getLevel() > oldLevel) shouldShowUpgrade = true;
+                    }
+                    removeEntity(entities, items[k]);
+                    delete items[k];
+                    items.erase(items.begin() + k);
+                    k--;
                 }
             }
         }
-       
-        
-        
-        player.update();
-        for (auto s : skills) {
-            s->update(); // Cập nhật vị trí, timer của từng skill
-            
-            // Gọi tất cả trigger, skill nào đúng Type của nó thì nó mới chạy
-            s->triggerLaser(enemies);
-            s->triggerThunder(enemies);
-            s->triggerShieldCollision(enemies);
-            s->triggerHammerCollision(enemies);
-            s->triggerShurikenCollision(enemies);
-        }
 
-
-        // Player-enemy collisions
-        for (auto enemy : enemies) {
-            if (distance(player.getX(), player.getY(), 
-                        enemy->getX(), enemy->getY()) < 20) {
-                player.takeDamage(enemy->getDamage());
-            }
-        }
-
-        // Enemy bullet-player collisions
-        for (size_t j = 0; j < bullets.size(); j++) {
-            if (bullets[j]->getIsEnemyBullet() && distance(bullets[j]->getX(), bullets[j]->getY(), player.getX(), player.getY()) < 15) {
-                player.takeDamage(bullets[j]->getDamage());
-                removeEntity(entities, bullets[j]);
-                bullets.erase(bullets.begin() + j);
-                j--;
-            }
-        }
-        
-        // Item collection
-        for (size_t k =0; k < items.size(); k++){
-           float dist = distance(player.getX(), player.getY(), items[k]->getX(), items[k]->getY());
-            if (dist < 20) {
-                if (items[k]->getID() == 1) { // HP item
-                    player.setHp(player.getHp() + 10);
-                } else { // EXP item
-                    int pointsEarned = items[k]->getExpValue();
-                
-                    // LƯU LẠI CẤP ĐỘ TRƯỚC KHI CỘNG EXP
-                    int oldLevel = player.getLevel();
-                    
-                    player.addExp(pointsEarned); // Hàm này sẽ tự gọi levelUp() bên trong Player.cpp
-
-                    // NẾU CẤP ĐỘ THAY ĐỔI -> NÂNG CẤP SKILL
-                    if (player.getLevel() > oldLevel) {
-                        TraceLog(LOG_INFO, "PLAYER LEVEL UP! Upgrading all skills...");
-                        for (auto s : skills) {
-                            s->levelUp(); // GỌI HÀM NÀY THÌ SKILL MỚI LÊN CẤP ĐƯỢC
-                        }
-                }
-                }
-                removeEntity(entities, items[k]);
-                delete items[k];
-                items.erase(items.begin() + k);
-                k--;
-                }
-            
-        }
-    }
-        // Check for dead enemies from weapon bullets
+        // Enemy chet se roi exp item va cong diem
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
             if (enemies[i]->getHp() <= 0) {
-                int scoreType = enemies[i]->getEnemyType();
-                if (scoreType == 0) player.addScore(10);
-                else if (scoreType == 1) player.addScore(15);
-                else if (scoreType == 2) player.addScore(25);
-                else if (scoreType == 3) player.addScore(20);
+                player.addScore(enemies[i]->getScoreReward());
 
-                int val = 10;
-                int type = enemies[i]->getEnemyType();
-                if (type == 1) val = 15;
-                if (type == 2) val = 25;
-                if (type == 3) val = 20;
-
-                Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), val, 0);
+                Item* item = new Item(enemies[i]->getX(), enemies[i]->getY(), enemies[i]->getExpReward(), 0);
                 items.push_back(item);
                 entities.push_back(item);
                 removeEnemy(entities, enemies, i);
             }
         }
 
-        // Draw
+        // Ve world truoc, UI sau de UI khong bi camera keo theo
         BeginDrawing();
         ClearBackground(BLACK);
         BeginMode2D(player.getCamera());
+        DrawTexture(floorTexture, 0, 0, WHITE);
+        DrawTexture(wallsTexture, 0, 0, WHITE);
         for (auto e : entities) e->draw();
+        for (auto s : skillInventory) s->draw();
         drawProjectiles(weaponProjectiles); // Draw weapon projectiles
         
         // End camera mode
         EndMode2D();
         
-        // Draw UI elements (outside camera mode so they stay fixed on screen)
+        // Ve HUD co dinh ngoai camera
         DrawFPS(24, 18);
         DrawText(TextFormat("HP: %d/%d", player.getHp(), player.getMaxHp()), 24, 54, 36, WHITE);
         DrawText(TextFormat("LV: %d", player.getLevel()), 24, 99, 36, YELLOW);
         
-        // Draw current weapon name
+        // Hien thi ten vu khi dang su dung
         DrawText(currentWeapon ? TextFormat("Weapon: %s (1-2 to switch)", currentWeapon->getName()) : "Weapon: None", 24, 189, 27, GREEN);
         
-        // Draw EXP progress bar
+        // Thanh kinh nghiem o cuoi man hinh
         int expBarWidth = 1920;
         int expBarHeight = 36;
         int expBarX = 0;
@@ -432,66 +421,43 @@ int main() {
         DrawRectangleLines(expBarX, expBarY, expBarWidth, expBarHeight, WHITE);
 
         DrawText(TextFormat("EXP: %d/%d", player.getExp(), player.getExpToNextLevel()), 792, 1004, 36, SKYBLUE);
-        
-        DrawText(TextFormat("Score: %d", player.getScore()), 10, 80, 20, WHITE);
-        // Format time as MM:Ss
-        int mins = (int)(gameTimer / 60);
-        int secs = (int)(gameTimer) % 60;
-        // Display survival time in MM:SS format
-        DrawText(TextFormat("Time: %02d:%02d", mins, secs), 330, 20, 25, WHITE);
       
         DrawRectangleRec(pauseButton, DARKGRAY);
-        DrawText("||", pauseButton.x + 18, pauseButton.y + 10, 30, WHITE);
+        DrawText("||", pauseButton.x + 20, pauseButton.y + 12, 30, WHITE);
 
-        // NẾU ĐANG PAUSE THÌ VẼ BẢNG MENU
-        if (isPaused) {
-            // Vẽ lớp nền mờ đè lên game
-            DrawRectangle(0, 0, 800, 600, Fade(BLACK, 0.6f));
-
-            // Vẽ cái bảng Menu ở giữa
-            DrawRectangle(250, 150, 300, 300, RAYWHITE);
-            DrawText("GAME PAUSED", 310, 180, 30, BLACK);
-
-            // Nút RESUME
-            Rectangle resumeBtn = { 300, 250, 200, 50 };
-            DrawRectangleRec(resumeBtn, LIGHTGRAY);
-            DrawText("RESUME", 355, 265, 20, BLACK);
-
-            // Nút EXIT
-            Rectangle exitBtn = { 300, 330, 200, 50 };
-            DrawRectangleRec(exitBtn, RED);
-            DrawText("EXIT", 375, 345, 20, WHITE);
-
-            // Check click vào các nút trong Menu
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                Vector2 mousePos = GetMousePosition();
-                if (CheckCollisionPointRec(mousePos, resumeBtn)) {
-                    isPaused = false; // Chạy tiếp
-                }
-                if (CheckCollisionPointRec(mousePos, exitBtn)) {
-                    break; // Thoát vòng lặp main -> Out game
-                }
-            }
-        }
+       
 
         DrawText(TextFormat("Score: %d", player.getScore()), 24, 144, 36, WHITE);
-        // Format time as MM:SS
+        // Hien thi wave va thoi gian song sot
         int total = (int)waveSystem.getInternalTimer();
         int waveMins = (int)(total / 60);
         int waveSecs = (int)(total % 60);
         // Display survival time in MM:SS format
         Color waveColor = (waveSystem.getCurrentWaveNumber() > 3.0 ) ? RED : WHITE;
-        DrawText(TextFormat("Wave: %d", waveSystem.getCurrentWaveNumber()), 792, 96, 40, waveColor);
+        DrawText(TextFormat("Wave: %d", waveSystem.getCurrentWaveNumber()), 850, 96, 40, waveColor);
         DrawText(TextFormat("Time: %02d:%02d", waveMins, waveSecs), 792, 36, 45, WHITE);
 
+        // Cac o inventory cua vu khi va skill
         Rectangle slot1 = {432, 860, 126, 126};
         Rectangle slot2 = {648, 860, 126, 126};
+        Rectangle skillSlot1 = {1146, 860, 126, 126};
+        Rectangle skillSlot2 = {1362, 860, 126, 126};
+        Rectangle skillSlot3 = {1578, 860, 126, 126};
         DrawRectangleRec(slot1, DARKGRAY);
         DrawRectangleRec(slot2, DARKGRAY);
+        DrawRectangleRec(skillSlot1, DARKGRAY);
+        DrawRectangleRec(skillSlot2, DARKGRAY);
+        DrawRectangleRec(skillSlot3, DARKGRAY);
         DrawRectangleLinesEx(slot1, currentWeapon == (weaponInventory.size() > 0 ? weaponInventory[0] : nullptr) ? 5 : 4, WHITE);
         DrawRectangleLinesEx(slot2, currentWeapon == (weaponInventory.size() > 1 ? weaponInventory[1] : nullptr) ? 5 : 4, WHITE);
+        DrawRectangleLinesEx(skillSlot1, 4, WHITE);
+        DrawRectangleLinesEx(skillSlot2, 4, WHITE);
+        DrawRectangleLinesEx(skillSlot3, 4, WHITE);
         DrawText("1", slot1.x + 11, slot1.y + 7, 29, LIGHTGRAY);
         DrawText("2", slot2.x + 11, slot2.y + 7, 29, LIGHTGRAY);
+        DrawText("S1", skillSlot1.x + 11, skillSlot1.y + 7, 29, LIGHTGRAY);
+        DrawText("S2", skillSlot2.x + 11, skillSlot2.y + 7, 29, LIGHTGRAY);
+        DrawText("S3", skillSlot3.x + 11, skillSlot3.y + 7, 29, LIGHTGRAY);
 
         if (weaponInventory.size() > 0) {
             DrawText(TextFormat("Lv %d", weaponInventory[0]->getLevel()), slot1.x + 32, slot1.y - 32, 29, YELLOW);
@@ -501,12 +467,58 @@ int main() {
             DrawText(TextFormat("Lv %d", weaponInventory[1]->getLevel()), slot2.x + 32, slot2.y - 32, 29, YELLOW);
             DrawText(weaponInventory[1]->getName(), slot2.x + 19, slot2.y + 50, 22, WHITE);
         }
+        if (skillInventory.size() > 0) {
+            DrawText(TextFormat("Lv %d", skillInventory[0]->getLevel()), skillSlot1.x + 32, skillSlot1.y - 32, 29, YELLOW);
+            DrawText(skillInventory[0]->getName(), skillSlot1.x + 8, skillSlot1.y + 50, 18, WHITE);
+        }
+        if (skillInventory.size() > 1) {
+            DrawText(TextFormat("Lv %d", skillInventory[1]->getLevel()), skillSlot2.x + 32, skillSlot2.y - 32, 29, YELLOW);
+            DrawText(skillInventory[1]->getName(), skillSlot2.x + 8, skillSlot2.y + 50, 18, WHITE);
+        }
+        if (skillInventory.size() > 2) {
+            DrawText(TextFormat("Lv %d", skillInventory[2]->getLevel()), skillSlot3.x + 32, skillSlot3.y - 32, 29, YELLOW);
+            DrawText(skillInventory[2]->getName(), skillSlot3.x + 8, skillSlot3.y + 50, 18, WHITE);
+        }
+
+         // NĂ¡ÂºÂ¾U Ă„ÂANG PAUSE THÄ‚Å’ VĂ¡ÂºÂ¼ BĂ¡ÂºÂ¢NG MENU
+        if (isPaused) {
+            // VĂ¡ÂºÂ½ lĂ¡Â»â€ºp nĂ¡Â»Ân mĂ¡Â»Â Ă„â€˜Ä‚Â¨ lÄ‚Âªn game
+            DrawRectangle(0, 0, 1920, 1040, Fade(BLACK, 0.6f));
+
+            // VĂ¡ÂºÂ½ cÄ‚Â¡i bĂ¡ÂºÂ£ng Menu Ă¡Â»Å¸ giĂ¡Â»Â¯a
+            DrawRectangle(660, 250, 600, 420, RAYWHITE);
+            DrawText("GAME PAUSED", 765, 310, 54, BLACK);
+
+            // NÄ‚Âºt RESUME
+            Rectangle resumeBtn = { 760, 410, 400, 80 };
+            DrawRectangleRec(resumeBtn, LIGHTGRAY);
+            DrawText("RESUME", 870, 432, 36, BLACK);
+
+            // NÄ‚Âºt EXIT
+            Rectangle exitBtn = { 760, 530, 400, 80 };
+            DrawRectangleRec(exitBtn, RED);
+            DrawText("EXIT", 915, 552, 36, WHITE);
+
+            // Check click vÄ‚Â o cÄ‚Â¡c nÄ‚Âºt trong Menu
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 mousePos = GetMousePosition();
+                if (CheckCollisionPointRec(mousePos, resumeBtn)) {
+                    isPaused = false; // ChĂ¡ÂºÂ¡y tiĂ¡ÂºÂ¿p
+                }
+                if (CheckCollisionPointRec(mousePos, exitBtn)) {
+                    break; // ThoÄ‚Â¡t vÄ‚Â²ng lĂ¡ÂºÂ·p main -> Out game
+                }
+            }
+        }
         EndDrawing();
     }
-    // giải phóng bộ nhớ 
+    // Giai phong texture truoc khi dong cua so
     for (int i=0; i<5 ; i++){
         UnloadTexture(enemySprites[i]);
     }
+    UnloadTexture(mainScreenTexture);
+    UnloadTexture(floorTexture);
+    UnloadTexture(wallsTexture);
     CloseWindow();
     return 0;
 

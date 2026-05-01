@@ -25,8 +25,8 @@ void Bullet::update() {
 
 void Bullet::draw() {
     if (isEnemyBullet) {
-        DrawCircle(x, y, 3, RED); // Enemy bullet color
+        DrawCircle(x, y, 3, RED); // Đạn quái
     } else {
-        DrawCircle(x, y, 3, YELLOW); // Player bullet color
+        DrawCircle(x, y, 3, YELLOW); // Đạn người chơi
     }
 }

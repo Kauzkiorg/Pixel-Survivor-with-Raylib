@@ -1,5 +1,6 @@
 #include "Boss.h"
 
+// Khởi tạo boss
 Boss::Boss(Player* p, int type, Texture2D* tex) : Enemy(p, type, tex) {
     this->setHp(5000);           
     this->maxArmor = 1000.0f;       

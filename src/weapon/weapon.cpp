@@ -3,7 +3,20 @@
 #include "raylib.h"
 #include "raymath.h"
 
+namespace {
+// Chuan hoa huong bay, tranh vector 0 gay loi projectile
+Vector2 NormalizeOrFallback(Vector2 direction) {
+    return Vector2Length(direction) > 0.0f ? Vector2Normalize(direction) : Vector2{1.0f, 0.0f};
+}
+
+// Tinh goc xoay cho texture projectile dua theo van toc hien tai
+float GetProjectileRotation(const WeaponProjectile& projectile) {
+    return atan2f(projectile.velocity.y, projectile.velocity.x) * RAD2DEG + 90.0f;
+}
+}
+
 Weapon::Weapon(int type) {
+    // Khoi tao vu khi theo type va set stat ban dau
     weaponType = type;
     weaponLevel = 1;
     currentCooldownTimer = 0.0f;
@@ -19,20 +32,21 @@ int Weapon::getLevel() const {
 }
 
 void Weapon::setLevel(int newLevel) {
+    // Khoa level vao khoang hop le va tinh lai stat
     weaponLevel = newLevel < 0 ? 0 : (newLevel > 10 ? 10 : newLevel);
     updateWeaponStats();
 }
 
-// Hàm cập nhật chỉ số khi lên cấp
 void Weapon::updateWeaponStats() {
+    // Lay bo stat tong hop theo weapon type va level
     stats = getWeaponStats(weaponType, weaponLevel);
 }
 
-// Hàm kiểm tra cooldown và cho phép tấn công
 void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
                     std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition, bool isAttacking) {
     if (weaponLevel <= 0) return;
 
+    // Chi cho tan cong khi dang input va cooldown da xong
     currentCooldownTimer += GetFrameTime();
     if (isAttacking && currentCooldownTimer >= stats.cooldown) {
         currentCooldownTimer = 0.0f;
@@ -40,7 +54,6 @@ void Weapon::update(Player& player, const std::vector<Enemy*>& enemies,
     }
 }
 
-// Hàm thực hiện tấn công 
 void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
                     std::vector<WeaponProjectile>& projectiles, Vector2 targetPosition) {
     if (weaponLevel <= 0) return;
@@ -49,9 +62,8 @@ void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
     int totalDamage = stats.damage + player.getDamage();
 
     switch (weaponType) {
-        
-        // Búa - Hammer
         case 0:
+            // Hammer danh tat ca enemy trong tam can chien
             for (Enemy* enemy : enemies) {
                 if (!enemy) continue;
                 if (Vector2Distance(playerPos, {enemy->getX(), enemy->getY()}) <= stats.range) {
@@ -61,117 +73,137 @@ void Weapon::attack(Player& player, const std::vector<Enemy*>& enemies,
             }
             projectiles.push_back({playerPos, {0, 0}, 0.2f, stats.range, 0, ORANGE, 1, 0});
             break;
-        
-        // Gậy phép - Magic Wand
+
         case 1: {
+            // Magic wand tu dong khoa muc tieu trong tam
             int shotsFired = 0;
             for (Enemy* enemy : enemies) {
                 if (!enemy) continue;
                 if (shotsFired >= stats.count) break;
                 if (Vector2Distance(playerPos, {enemy->getX(), enemy->getY()}) <= stats.range) {
-                    
-                    // Thuật toán kiểm tra vị trí enemies trong bán kính cho phép auto bắn
-                    Vector2 dir = {enemy->getX() - playerPos.x, enemy->getY() - playerPos.y};
-                    if (dir.x == 0 && dir.y == 0) dir = {1.0f, 0.0f};
-                    else dir = Vector2Normalize(dir);
+                    Vector2 dir = NormalizeOrFallback({enemy->getX() - playerPos.x, enemy->getY() - playerPos.y});
+
                     projectiles.push_back({playerPos, {dir.x * stats.speed, dir.y * stats.speed},
-                                           2.0f, 6.0f, (float)totalDamage, PURPLE, 0, 0});
+                                           2.0f, 10.0f, (float)totalDamage, PURPLE, 0, 0});
                     shotsFired++;
                 }
             }
             break;
         }
 
-        // Dao ném - Knife
         case 2: {
-            Vector2 dir = {targetPosition.x - playerPos.x, targetPosition.y - playerPos.y};
-            if (dir.x == 0 && dir.y == 0) dir = {1.0f, 0.0f};
-            else dir = Vector2Normalize(dir);
+            // Knife bay theo huong chuot va toa goc neu co nhieu dan
+            Vector2 dir = NormalizeOrFallback({targetPosition.x - playerPos.x, targetPosition.y - playerPos.y});
+
             for (int i = 0; i < stats.count; i++) {
-                
-                // Thuật toán căn chỉnh góc độ khi số lượng dao tăng
                 float angleOffset = (float)(i - stats.count / 2) * 8.0f;
                 if (stats.count % 2 == 0) angleOffset += 4.0f;
-                Vector2 v = Vector2Rotate(dir, angleOffset * DEG2RAD);
-                projectiles.push_back({playerPos, {v.x * stats.speed, v.y * stats.speed},
-                                       1.0f, 4.0f, (float)totalDamage, SKYBLUE, 0, 0});
+                Vector2 velocity = Vector2Rotate(dir, angleOffset * DEG2RAD);
+                projectiles.push_back({playerPos, {velocity.x * stats.speed, velocity.y * stats.speed},
+                                       1.0f, 8.0f, (float)totalDamage, SKYBLUE, 4, 0});
             }
             break;
         }
 
-        // Sách phép - Spell Book
         case 3: {
-            Vector2 dir = {targetPosition.x - playerPos.x, targetPosition.y - playerPos.y};
-            if (dir.x == 0 && dir.y == 0) dir = {1.0f, 0.0f};
-            else dir = Vector2Normalize(dir);
-            for (int i = 0; i < stats.count; i++) {
+            // Spell book ban dan no, ban kinh no luu trong angle
+            Vector2 dir = NormalizeOrFallback({targetPosition.x - playerPos.x, targetPosition.y - playerPos.y});
 
-                // Thuật toán căn chỉnh góc độ khi số lượng đạn tăng
+            for (int i = 0; i < stats.count; i++) {
                 float angleOffset = (float)(i - stats.count / 2) * 10.0f;
                 if (stats.count % 2 == 0) angleOffset += 5.0f;
-                Vector2 v = Vector2Rotate(dir, angleOffset * DEG2RAD);
-                projectiles.push_back({playerPos, {v.x * stats.speed, v.y * stats.speed},
-                                       2.0f, 8.0f, (float)totalDamage, PURPLE, 2, stats.explosionRadius});
+                Vector2 velocity = Vector2Rotate(dir, angleOffset * DEG2RAD);
+                projectiles.push_back({playerPos, {velocity.x * stats.speed, velocity.y * stats.speed},
+                                       2.0f, 10.0f, (float)totalDamage, PURPLE, 2, stats.explosionRadius});
             }
             break;
         }
     }
 }
 
-// Hàm xử lý va chạm
 void updateProjectiles(std::vector<WeaponProjectile>& projectiles, std::vector<Enemy*>& enemies, float dt) {
+    // Hieu ung no duoc them sau de tranh sua mang ngay trong vong lap
     std::vector<WeaponProjectile> effects;
 
+    // Duyet nguoc de xoa projectile an toan
     for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
-        WeaponProjectile& p = projectiles[i];
+        WeaponProjectile& projectile = projectiles[i];
 
-        // Tính vị trí khi cộng với khoảng cách bằng công thức vật lý
-        p.position.x += p.velocity.x * dt;
-        p.position.y += p.velocity.y * dt;
-        p.lifeTime -= dt;
+        projectile.position.x += projectile.velocity.x * dt;
+        projectile.position.y += projectile.velocity.y * dt;
+        projectile.lifeTime -= dt;
 
-        if (p.damage > 0) {
+        if (projectile.damage > 0) {
+            // Projectile sat thuong se va cham voi enemy
             for (Enemy* enemy : enemies) {
                 if (!enemy) continue;
-                if (CheckCollisionCircles(p.position, p.radius, {enemy->getX(), enemy->getY()}, 10)) {
-                    enemy->takeDamage((int)p.damage);
+                if (CheckCollisionCircles(projectile.position, projectile.radius, {enemy->getX(), enemy->getY()}, 10)) {
+                    enemy->takeDamage((int)projectile.damage);
 
-                    // Trường hợp đạn từ sách phép nổ
-                    if (p.type == 2) {
+                    if (projectile.type == 2) {
+                        // Spell book co splash damage quanh diem no
                         for (Enemy* splashEnemy : enemies) {
                             if (!splashEnemy) continue;
-                            if (Vector2Distance(p.position, {splashEnemy->getX(), splashEnemy->getY()}) <= p.angle) {
-                                splashEnemy->takeDamage((int)(p.damage / 2));
+                            if (Vector2Distance(projectile.position, {splashEnemy->getX(), splashEnemy->getY()}) <= projectile.angle) {
+                                splashEnemy->takeDamage((int)(projectile.damage / 2));
                             }
                         }
-                        effects.push_back({p.position, {0, 0}, 0.3f, 0, 0, ORANGE, 2, p.angle});
+                        effects.push_back({projectile.position, {0, 0}, 0.3f, 0, 0, ORANGE, 3, projectile.angle});
                     }
 
-                    p.lifeTime = 0;
+                    projectile.lifeTime = 0;
                     break;
                 }
             }
         }
 
-        // Thời gian cho phép tồn tại hết sẽ mất --> tránh gây lag
-        if (p.lifeTime <= 0) {
+        if (projectile.lifeTime <= 0) {
             projectiles.erase(projectiles.begin() + i);
         }
     }
 
-    for (WeaponProjectile effect : effects) projectiles.push_back(effect);
+    for (const WeaponProjectile& effect : effects) {
+        projectiles.push_back(effect);
+    }
 }
 
-// Hàm vẽ các vật thể bay sử dụng raylib
 void drawProjectiles(const std::vector<WeaponProjectile>& projectiles) {
-    for (const WeaponProjectile& p : projectiles) {
-        if (p.type == 1) {
-            DrawCircleV(p.position, p.radius, Fade(ORANGE, p.lifeTime * 5));
-            DrawCircleLinesV(p.position, p.radius, Fade(YELLOW, p.lifeTime * 5));
-        } else if (p.type == 2 && p.damage == 0) {
-            DrawCircleV(p.position, p.angle, Fade(ORANGE, p.lifeTime * 3));
+    // Texture projectile duoc tai 1 lan va dung lai nhieu frame
+    static Texture2D hammerTexture = LoadTexture("Graphics/Hammer.png");
+    static Texture2D magicTexture = LoadTexture("Graphics/Magic.png");
+    static Texture2D knifeTexture = LoadTexture("Graphics/Knife.png");
+    static Texture2D fireTexture = LoadTexture("Graphics/fire.png");
+    static Texture2D explosionTexture = LoadTexture("Graphics/explosion.png");
+
+    for (const WeaponProjectile& projectile : projectiles) {
+        if (projectile.type == 1) {
+            // Ve hieu ung hammer danh vung
+            Rectangle source = {0.0f, 0.0f, (float)hammerTexture.width, (float)hammerTexture.height};
+            Rectangle dest = {projectile.position.x, projectile.position.y, projectile.radius * 2.0f, projectile.radius * 2.0f};
+            DrawTexturePro(hammerTexture, source, dest, {projectile.radius, projectile.radius}, 0.0f, WHITE);
+        } else if (projectile.type == 2) {
+            // Ve dan lua cua spell book
+            Rectangle source = {0.0f, 0.0f, (float)fireTexture.width, (float)fireTexture.height};
+            Rectangle dest = {projectile.position.x, projectile.position.y, projectile.radius * 4.0f, projectile.radius * 4.0f};
+            float rotation = GetProjectileRotation(projectile);
+            DrawTexturePro(fireTexture, source, dest, {projectile.radius * 2.0f, projectile.radius * 2.0f}, rotation, WHITE);
+        } else if (projectile.type == 3) {
+            // Ve hieu ung vu no
+            Rectangle source = {0.0f, 0.0f, (float)explosionTexture.width, (float)explosionTexture.height};
+            Rectangle dest = {projectile.position.x, projectile.position.y, projectile.angle * 2.0f, projectile.angle * 2.0f};
+            DrawTexturePro(explosionTexture, source, dest, {projectile.angle, projectile.angle}, 0.0f, WHITE);
+        } else if (projectile.type == 4) {
+            // Ve knife projectile
+            Rectangle source = {0.0f, 0.0f, (float)knifeTexture.width, (float)knifeTexture.height};
+            Rectangle dest = {projectile.position.x, projectile.position.y, projectile.radius * 4.0f, projectile.radius * 4.0f};
+            float rotation = GetProjectileRotation(projectile);
+            DrawTexturePro(knifeTexture, source, dest, {projectile.radius * 2.0f, projectile.radius * 2.0f}, rotation, WHITE);
         } else {
-            DrawCircleV(p.position, p.radius, p.color);
+            // Mac dinh la dan cua magic wand
+            Rectangle source = {0.0f, 0.0f, (float)magicTexture.width, (float)magicTexture.height};
+            Rectangle dest = {projectile.position.x, projectile.position.y, projectile.radius * 4.0f, projectile.radius * 4.0f};
+            float rotation = GetProjectileRotation(projectile);
+            DrawTexturePro(magicTexture, source, dest, {projectile.radius * 2.0f, projectile.radius * 2.0f}, rotation, WHITE);
         }
     }
 }

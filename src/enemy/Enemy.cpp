@@ -1,5 +1,5 @@
 #include "Enemy.h"
-#include <cmath>
+#include "raymath.h"
 
 Enemy::Enemy(Player* p, int type, Texture2D* tex) : player(p), texture(tex), enemyType(type) {
     // Set hp and speed based on enemy type
@@ -23,9 +23,8 @@ Enemy::Enemy(Player* p, int type, Texture2D* tex) : player(p), texture(tex), ene
 
 void Enemy::update() {
     // Move towards player
-    float dx = player->getX() - x;
-    float dy = player->getY() - y;
-    float dist = sqrt(dx*dx + dy*dy);
+    Vector2 direction = Vector2Subtract({player->getX(), player->getY()}, {x, y});
+    float dist = Vector2Length(direction);
     
     if (dist > 0.1f) {
         // tạo logic dùng lại để bắn của quái RANGED
@@ -33,12 +32,13 @@ void Enemy::update() {
             // đã vào tầm bắn , tự động  nạp đạn
             fireTimer +=GetFrameTime();
         } else {
-        x += (dx / dist) * speed;
-        y += (dy / dist) * speed;
+        Vector2 step = Vector2Scale(Vector2Normalize(direction), speed);
+        x += step.x;
+        y += step.y;
         fireTimer = 0.0f;
         }
         // cập nhật góc quay
-        rotation = (dx < 0) ? -1.0f : 1.0f;
+        rotation = (direction.x < 0) ? -1.0f : 1.0f;
     }
 }
 // kiem tra dieu kien ra dan cua quai RANGED

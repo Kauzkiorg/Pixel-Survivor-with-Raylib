@@ -4,26 +4,26 @@
 
 class Item : public Entity {
 private:
-    int expValue;       // Amount of EXP this gem gives
+    int expValue;       
     int ID;             // 0 : EXP 1: HP 
-    float timer;        // Current time the gem has existed
-    float duration;     // Max lifetime (15.0f seconds)
-    Color color;        // To distinguish different EXP values visually
+    float timer;       
+    float duration;     
+    Color color;        
 
 public:
-    // Constructor: Takes position and the EXP value it holds
+    // Constructor
     Item(float ix, float iy, int val, int ID );
 
-    // Override base class methods
+    // Override phương thức hàm cũ
     void update() override;
     void draw() override;
 
-    // Getters (Standard practice in your project)
+    // Getters 
     int getExpValue() const { return expValue; }
     int getID() const { return ID; }
     bool isExpired() const { return timer >= duration; }
     
-    // Setters (In case you want to modify gems later)
+    // Setters 
     void setExpValue(int val) { expValue = val; }
     void setID(int newID) { ID = newID; }
     void setDuration(float d) { duration = d; }

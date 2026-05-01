@@ -6,7 +6,7 @@ class Bullet : public Entity {
 private:
     float vx, vy;
     float speed = 5.0f;
-    // false is player's bullet
+    // false nếu là đạn ng chơi
     bool isEnemyBullet = false;
     int damage;
 public:

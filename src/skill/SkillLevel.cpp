@@ -1,106 +1,135 @@
 #include "SkillLevel.h"
-#include "Skill.h" // Để dùng enum SkillType
 
-const char* getSkillName(int skillType) {
+// Chi so goc cua tung skill truoc khi cong bonus level
+const SkillStats BASE_SKILL_STATS[] = {
+    {15, 5.0f, 400.0f, 0.0f, 1, 14.0f, false},
+    {20, 5.0f, 450.0f, 0.0f, 1, 120.0f, false},
+    {10, 0.0f, 70.0f, 0.0f, 1, 18.0f, false},
+    {15, 4.5f, 18.0f, 280.0f, 1, 18.0f, false},
+    {25, 2.2f, 0.0f, 320.0f, 1, 24.0f, false}
+};
+
+// Tra ten hien thi theo ma skill
+const char* getSkillLevelSkillName(int skillType) {
     switch (skillType) {
-        case (int)SkillType::LASER_BEAM:     return "Tia Laser";
-        case (int)SkillType::HAMMER:         return "Búa Thor";
-        case (int)SkillType::THUNDER_STRIKE: return "Sét Đánh";
-        case (int)SkillType::SHIELD:         return "Khiên Năng Lượng";
-        case (int)SkillType::SHURIKEN:       return "Phi Tiêu";
-        case (int)SkillType::AUTO_BALLS:     return "Quả Cầu Quỹ Đạo";
-        default: return "Kỹ Năng Lạ";
+        case SKILL_LASER_BEAM: return "Laser Beam";
+        case SKILL_THUNDER_STRIKE: return "Thunder";
+        case SKILL_SHURIKEN: return "Shuriken";
+        case SKILL_SHIELD: return "Shield";
+        case SKILL_HAMMER: return "Hammer";
+        default: return "Unknown";
     }
 }
 
-SkillLevelData getSkillLevelData(int skillType, int level) {
-    SkillLevelData data;
+// Tra bonus cu the cua tung level nang cap
+SkillLevel getSkillLevelData(int skillType, int level) {
+    SkillLevel data;
     data.level = level;
-    data.isSpecial = (level == 10);
-    data.damageBonus = 0.0f;
-    data.rangeBonus = 0.0f;
-    data.cooldownMult = 1.0f;
-    data.particleBonus = 0;
-    
-    data.name = "Nâng Cấp";
-    data.description = "Cải thiện sức mạnh kỹ năng.";
+    data.name = "None";
+    data.description = "No upgrade.";
+    data.damageBonus = 0;
+    data.rangeBonus = 0;
+    data.cooldownMultiplier = 1.0f;
+    data.projectileBonus = 0;
+    data.speedBonus = 0;
+    data.effectRadiusBonus = 0;
+    data.special = false;
 
     switch (skillType) {
-        case (int)SkillType::LASER_BEAM:
+        case SKILL_LASER_BEAM:
             switch (level) {
-                case 1: data.name = "Tia Hội Tụ"; data.description = "Kích hoạt tia Laser cơ bản."; break;
-                case 2: data.name = "Điện Áp Cao"; data.description = "Sát thương +20."; break;
-                case 3: data.name = "Tầm Xa"; data.description = "Tầm bắn tăng thêm 100."; break;
-                case 4: data.name = "Sạc Nhanh"; data.description = "Giảm thời gian hồi chiêu."; break;
-                case 5: data.name = "Tia Cực Đại"; data.description = "Tăng độ rộng của tia Laser."; break;
-                case 6: data.name = "Tầm Bắn Tỉa"; data.description = "Tầm bắn tăng thêm 200."; break;
-                case 7: data.name = "Lõi Nóng Chảy"; data.description = "Sát thương tăng thêm 30."; break;
-                case 8: data.name = "Tầm Xa Tuyệt Đối"; data.description = "Tầm bắn tăng thêm 300."; break;
-                case 9: data.name = "Xung Điện Nhanh"; data.description = "Hồi chiêu siêu nhanh."; break;
-                case 10: data.name = "Quá Tải Kép"; data.description = "Tiến hóa: Bắn 2 tia đối nghịch nhau!"; break;
+                case 1: data.name = "Damage +5"; data.description = "Laser damage +5"; data.damageBonus = 5; break;
+                case 2: data.name = "Range +100"; data.description = "Laser range +100"; data.rangeBonus = 100; break;
+                case 3: data.name = "Cooldown x0.9"; data.description = "Laser cooldown x0.9"; data.cooldownMultiplier = 0.9f; break;
+                case 4: data.name = "Damage +10"; data.description = "Laser damage +10"; data.damageBonus = 10; break;
+                case 5: data.name = "Radius +4"; data.description = "Laser width +4"; data.effectRadiusBonus = 4; break;
+                case 6: data.name = "Range +150"; data.description = "Laser range +150"; data.rangeBonus = 150; break;
+                case 7: data.name = "Damage +15"; data.description = "Laser damage +15"; data.damageBonus = 15; break;
+                case 8: data.name = "Cooldown x0.8"; data.description = "Laser cooldown x0.8"; data.cooldownMultiplier = 0.8f; break;
+                case 9: data.name = "Range +200"; data.description = "Laser range +200"; data.rangeBonus = 200; break;
+                case 10: data.name = "Dual Beam"; data.description = "Laser fires in two directions"; data.special = true; break;
             }
             break;
 
-        case (int)SkillType::HAMMER:
+        case SKILL_THUNDER_STRIKE:
             switch (level) {
-                case 1: data.name = "Búa Sắt"; data.description = "Ném búa gây sát thương."; break;
-                case 2: data.name = "Cú Nện Nặng"; data.description = "Sát thương +5."; break;
-                case 3: data.name = "Tay Nhẹ"; data.description = "Hồi chiêu x0.9."; break;
-                case 4: data.name = "Cạnh Thép"; data.description = "Sát thương +10."; break;
-                case 5: data.name = "Ném Tốc Độ"; data.description = "Hồi chiêu x0.8."; break;
-                case 6: data.name = "Sức Mạnh Nghiền Nát"; data.description = "Sát thương +10."; break;
-                case 7: data.name = "Cú Vung Khổng Lồ"; data.description = "Sát thương +15."; break;
-                case 8: data.name = "Tốc Độ Bão Tố"; data.description = "Hồi chiêu x0.7."; break;
-                case 9: data.name = "Uy Lực Thần Thánh"; data.description = "Sát thương +20."; break;
-                case 10: data.name = "Rìu Chiến Thor"; data.description = "Tiến hóa: Biến thành Rìu với sát thương hủy diệt!"; break;
+                case 1: data.name = "Damage +10"; data.description = "Thunder damage +10"; data.damageBonus = 10; break;
+                case 2: data.name = "Cooldown x0.9"; data.description = "Thunder cooldown x0.9"; data.cooldownMultiplier = 0.9f; break;
+                case 3: data.name = "+1 Projectile"; data.description = "Thunder strikes one more target"; data.projectileBonus = 1; break;
+                case 4: data.name = "Damage +15"; data.description = "Thunder damage +15"; data.damageBonus = 15; break;
+                case 5: data.name = "Cooldown x0.85"; data.description = "Thunder cooldown x0.85"; data.cooldownMultiplier = 0.85f; break;
+                case 6: data.name = "+1 Projectile"; data.description = "Thunder strikes one more target"; data.projectileBonus = 1; break;
+                case 7: data.name = "Damage +20"; data.description = "Thunder damage +20"; data.damageBonus = 20; break;
+                case 8: data.name = "Cooldown x0.8"; data.description = "Thunder cooldown x0.8"; data.cooldownMultiplier = 0.8f; break;
+                case 9: data.name = "Radius +30"; data.description = "Thunder effect size +30"; data.effectRadiusBonus = 30; break;
+                case 10: data.name = "+1 Projectile"; data.description = "Thunder strikes one more target"; data.projectileBonus = 1; data.special = true; break;
             }
             break;
 
-        case (int)SkillType::THUNDER_STRIKE:
+        case SKILL_SHURIKEN:
             switch (level) {
-                case 1: data.name = "Tĩnh Điện"; data.description = "Gọi một tia sét từ trời xuống."; break;
-                case 2: data.name = "Tăng Điện Áp"; data.description = "Sát thương +10."; break;
-                case 3: data.name = "Đoản Mạch"; data.description = "Hồi chiêu x0.9."; break;
-                case 4: data.name = "Sóng Năng Lượng"; data.description = "Sát thương +20."; break;
-                case 5: data.name = "Sét Đôi"; data.description = "Đánh xuống 2 tia sét cùng lúc."; break;
-                case 6: data.name = "Tần Số Cao"; data.description = "Sát thương +30."; break;
-                case 7: data.name = "Bão Tố"; data.description = "Hồi chiêu x0.7."; break;
-                case 8: data.name = "Thần Sấm"; data.description = "Sát thương +40."; break;
-                case 9: data.name = "Điểm Chớp Cháy"; data.description = "Hồi chiêu x0.6."; break;
-                case 10: data.name = "Sét Lan"; data.description = "Tiến hóa: Sét đánh nảy lan sang các mục tiêu lân cận!"; break;
+                case 1: data.name = "Damage +5"; data.description = "Orbit damage +5"; data.damageBonus = 5; break;
+                case 2: data.name = "Range +10"; data.description = "Orbit radius +10"; data.rangeBonus = 10; break;
+                case 3: data.name = "+1 Projectile"; data.description = "One more orbit projectile"; data.projectileBonus = 1; break;
+                case 4: data.name = "Damage +10"; data.description = "Orbit damage +10"; data.damageBonus = 10; break;
+                case 5: data.name = "Range +10"; data.description = "Orbit radius +10"; data.rangeBonus = 10; break;
+                case 6: data.name = "+1 Projectile"; data.description = "One more orbit projectile"; data.projectileBonus = 1; break;
+                case 7: data.name = "Damage +10"; data.description = "Orbit damage +10"; data.damageBonus = 10; break;
+                case 8: data.name = "Range +15"; data.description = "Orbit radius +15"; data.rangeBonus = 15; break;
+                case 9: data.name = "+1 Projectile"; data.description = "One more orbit projectile"; data.projectileBonus = 1; break;
+                case 10: data.name = "Special"; data.description = "Orbit size increases"; data.effectRadiusBonus = 6; data.special = true; break;
             }
             break;
 
-        case (int)SkillType::SHIELD:
+        case SKILL_SHIELD:
             switch (level) {
-                case 1: data.name = "Màn Chắn"; data.description = "Tạo một khiên năng lượng nảy quanh màn hình."; break;
-                case 2: data.name = "Năng Lượng Ổn Định"; data.description = "Giảm nhẹ hồi chiêu."; break;
-                case 3: data.name = "Vệ Sĩ Đôi"; data.description = "Tạo 2 khiên mỗi lần kích hoạt."; break;
-                case 4: data.name = "Bán Kính Lớn"; data.description = "Kích thước khiên tăng thêm."; break;
-                case 5: data.name = "Rào Chắn Nhanh"; data.description = "Hồi chiêu x0.8."; break;
-                case 6: data.name = "Tam Khiên"; data.description = "Tạo 3 khiên mỗi lần kích hoạt."; break;
-                case 7: data.name = "Vạn Lý Trường Thành"; data.description = "Kích thước khiên cực đại."; break;
-                case 8: data.name = "Siêu Cấp Bảo Vệ"; data.description = "Hồi chiêu x0.7."; break;
-                case 9: data.name = "Cạnh Plasma"; data.description = "Sát thương +20."; break;
-                case 10: data.name = "Khiên Thần Thánh"; data.description = "Tiến hóa: Tạo 4 khiên nảy bảo vệ tuyệt đối!"; break;
+                case 1: data.name = "Damage +5"; data.description = "Shield damage +5"; data.damageBonus = 5; break;
+                case 2: data.name = "Cooldown x0.9"; data.description = "Shield cooldown x0.9"; data.cooldownMultiplier = 0.9f; break;
+                case 3: data.name = "+1 Projectile"; data.description = "Create one more shield"; data.projectileBonus = 1; break;
+                case 4: data.name = "Range +6"; data.description = "Shield radius +6"; data.rangeBonus = 6; break;
+                case 5: data.name = "Speed +40"; data.description = "Shield speed +40"; data.speedBonus = 40; break;
+                case 6: data.name = "+1 Projectile"; data.description = "Create one more shield"; data.projectileBonus = 1; break;
+                case 7: data.name = "Damage +10"; data.description = "Shield damage +10"; data.damageBonus = 10; break;
+                case 8: data.name = "Cooldown x0.8"; data.description = "Shield cooldown x0.8"; data.cooldownMultiplier = 0.8f; break;
+                case 9: data.name = "Range +8"; data.description = "Shield radius +8"; data.rangeBonus = 8; break;
+                case 10: data.name = "+1 Projectile"; data.description = "Create one more shield"; data.projectileBonus = 1; data.special = true; break;
             }
             break;
-            
-        case (int)SkillType::SHURIKEN:
+
+        case SKILL_HAMMER:
             switch (level) {
-                case 1: data.name = "Lưỡi Dao Xoay"; data.description = "Một phi tiêu xoay quanh người."; break;
-                case 2: data.name = "Thêm Phi Tiêu"; data.description = "Số lượng phi tiêu +1."; break;
-                case 3: data.name = "Quỹ Đạo Rộng"; data.description = "Vòng xoay rộng hơn."; break;
-                case 4: data.name = "Cạnh Sắc Bén"; data.description = "Sát thương +10."; break;
-                case 5: data.name = "Bầy Phi Tiêu"; data.description = "Số lượng phi tiêu +1."; break;
-                case 6: data.name = "Tốc Độ Cao"; data.description = "Sát thương +10."; break;
-                case 7: data.name = "Bão Tố Phi Tiêu"; data.description = "Số lượng phi tiêu +1."; break;
-                case 8: data.name = "Quỹ Đạo Đại"; data.description = "Vòng xoay rất rộng."; break;
-                case 9: data.name = "Bậc Thầy Vũ Khí"; data.description = "Sát thương +15."; break;
-                case 10: data.name = "Vòng Xoay Tuyệt Diệt"; data.description = "Số lượng +2. Quét sạch mọi kẻ thù!"; break;
+                case 1: data.name = "Damage +5"; data.description = "Hammer damage +5"; data.damageBonus = 5; break;
+                case 2: data.name = "Cooldown x0.9"; data.description = "Hammer cooldown x0.9"; data.cooldownMultiplier = 0.9f; break;
+                case 3: data.name = "+1 Projectile"; data.description = "Throw one more hammer"; data.projectileBonus = 1; break;
+                case 4: data.name = "Damage +10"; data.description = "Hammer damage +10"; data.damageBonus = 10; break;
+                case 5: data.name = "Speed +40"; data.description = "Hammer speed +40"; data.speedBonus = 40; break;
+                case 6: data.name = "+1 Projectile"; data.description = "Throw one more hammer"; data.projectileBonus = 1; break;
+                case 7: data.name = "Damage +15"; data.description = "Hammer damage +15"; data.damageBonus = 15; break;
+                case 8: data.name = "Cooldown x0.8"; data.description = "Hammer cooldown x0.8"; data.cooldownMultiplier = 0.8f; break;
+                case 9: data.name = "Radius +8"; data.description = "Hammer size +8"; data.effectRadiusBonus = 8; break;
+                case 10: data.name = "Heavy Hammer"; data.description = "Hammer becomes stronger"; data.damageBonus = 20; data.special = true; break;
             }
             break;
     }
 
     return data;
+}
+
+// Cong don bonus tu level 1 den level hien tai
+SkillStats getSkillStats(int skillType, int skillLevel) {
+    SkillStats stats = {0, 1.0f, 0.0f, 0.0f, 1, 10.0f, false};
+    if (skillType >= 0 && skillType < 5) stats = BASE_SKILL_STATS[skillType];
+
+    for (int level = 1; level <= skillLevel; level++) {
+        SkillLevel data = getSkillLevelData(skillType, level);
+        stats.damage += data.damageBonus;
+        stats.range += data.rangeBonus;
+        stats.cooldown *= data.cooldownMultiplier;
+        stats.count += data.projectileBonus;
+        stats.speed += data.speedBonus;
+        stats.effectRadius += data.effectRadiusBonus;
+        if (data.special) stats.special = true;
+    }
+
+    return stats;
 }

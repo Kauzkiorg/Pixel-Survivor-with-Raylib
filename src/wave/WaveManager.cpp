@@ -80,19 +80,6 @@ void WaveManager::setInternalTimer (float time) {
         currentMilestoneIdx = (int)(internalTimer / 30.0f);
     }
 }
-void WaveManager::skipToWave(int waveNumber) {
-    bossSpawned = false; // Reset lại khi nhảy wave
-    if (waveNumber > 20) {
-        waveNumber = 20; // Cap at max wave
-    }
-    if (waveNumber < 1) {
-        internalTimer = 0.0f;
-        currentMilestoneIdx = 0;
-    } else {
-        currentMilestoneIdx = waveNumber - 1;
-        internalTimer = (float)currentMilestoneIdx * 30.0f;
-    }
-}
 void WaveManager::setDifficulty(int id) {
     difficultyID = id;
     switch (id){

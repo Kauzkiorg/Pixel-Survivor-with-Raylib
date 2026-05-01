@@ -9,38 +9,38 @@ Item::Item(float ix, float iy, int val, int ID) :  expValue(val), ID(ID), timer(
     }
     // EXP item
     else if (expValue <= 10) {
-        color = YELLOW;    // Common gems
+        color = YELLOW;    // Common 
     } else if (expValue <= 20) {
-        color = BLUE; // Rare gems
+        color = BLUE; // Rare 
     } else {
-        color = GREEN;  // Epic gems
+        color = GREEN;  // Epic 
     }
 }
 
-// Update 
+// Cập nhật thời gian tồn tại
 void Item::update() {
-    timer += GetFrameTime(); // Precise time tracking
+    timer += GetFrameTime(); 
 }
 
-// Draw
+// Vẽ
 void Item::draw() {
-    // 1. Calculate blink logic for the last 3 seconds
+    // Tính chớp 3 giây
     bool shouldDraw = true;
     if (timer >= duration - 3.0f) {
         if ((int)(timer * 10) % 2 != 0) {
-            shouldDraw = false; // Toggle visibility for blinking effect
+            shouldDraw = false; 
         }
     }
 
-    // 2. Draw both circle and outline only if it's in a "visible" blink state
+    // Vẽ chớp
     if (shouldDraw) {
         if (ID == 1){
-            DrawRectangle(x-9, y-9, 18, 18, color); // Draw HP item as a square
-            DrawRectangleLines(x-9, y-9, 18, 18, WHITE); // Outline for HP item
-            return; // Skip drawing the circle for HP items
+            DrawRectangle(x-9, y-9, 18, 18, color);
+            DrawRectangleLines(x-9, y-9, 18, 18, WHITE);
+            return; 
         } else if (ID == 0){
-        DrawCircle(x, y, 7, color);        // Solid core
-        DrawCircleLines(x, y, 7, WHITE);   // Consistent outline
+        DrawCircle(x, y, 7, color);        
+        DrawCircleLines(x, y, 7, WHITE);   
     }
     }
 }
