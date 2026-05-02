@@ -55,7 +55,6 @@ public:
             default: return 10;
         }
     }
-    
     // Setters
     void setHp(int newHp) { hp = newHp; }
     void setSpeed(float newSpeed) { speed = newSpeed; }

@@ -20,11 +20,11 @@ int main() {
     SetTargetFPS(60);
     // gắn đồ họa
     Texture2D enemySprites[5];
-    enemySprites[0] = LoadTexture("Graphics/Ultron-Perler-Bead-Pattern-removebg-preview.png");
-    enemySprites[1] = LoadTexture("Graphics/Venom-removebg-preview.png");
-    enemySprites[2] = LoadTexture("Graphics/Supreme-Leader-Ultron-removebg-preview.png");
-    enemySprites[3] = LoadTexture("Graphics/Loki-removebg-preview.png");
-    enemySprites[4] = LoadTexture("Graphics/Thanos Perler Bead Pattern.png");
+    enemySprites[0] = LoadTexture("Graphics/Normal/1.png");
+    enemySprites[1] = LoadTexture("Graphics/Fast/2.png");
+    enemySprites[2] = LoadTexture("Graphics/Ranged/3.png");
+    enemySprites[3] = LoadTexture("Graphics/Tank/4.png");
+    enemySprites[4] = LoadTexture("Graphics/boss/boss.png");
  
     Player player;
     WaveManager waveSystem;
