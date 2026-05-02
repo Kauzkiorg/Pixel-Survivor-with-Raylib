@@ -18,6 +18,11 @@ private:
     int damage = 10;
     Vector2 facingDir = {1, 0}; // Facing direction
     Camera2D camera; // Camera for following player
+    Texture2D playerTexture = {0};
+    Texture2D playerWalkTexture = {0};
+    int walkFrame = 0;
+    float walkTimer = 0.0f;
+    bool isWalking = false;
     
 public:
     // Constructor

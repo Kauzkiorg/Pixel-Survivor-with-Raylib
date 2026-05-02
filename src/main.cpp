@@ -205,7 +205,7 @@ int main() {
     Texture2D floorTexture = LoadTexture("Graphics/Floor.png");
     Texture2D wallsTexture = LoadTexture("Graphics/Walls.png");
     Texture2D mainScreenTexture = LoadTexture("Graphics/Main screen.png");
-
+    LoadItemTextures();
     // Toan bo state runtime chinh cua tran dau
     Player player;
     WaveManager waveSystem;
@@ -519,6 +519,7 @@ int main() {
     UnloadTexture(mainScreenTexture);
     UnloadTexture(floorTexture);
     UnloadTexture(wallsTexture);
+    UnloadItemTextures();
     CloseWindow();
     return 0;
 

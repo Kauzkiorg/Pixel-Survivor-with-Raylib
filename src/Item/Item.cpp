@@ -1,46 +1,69 @@
 #include "Item.h"
 
-// Constructor
-Item::Item(float ix, float iy, int val, int ID) :  expValue(val), ID(ID), timer(0.0f), duration(15.0f) {
-    this->x = ix;
-    this->y = iy;
-    if (ID == 1){
-        color = RED;
-    }
-    // EXP item
-    else if (expValue <= 10) {
-        color = YELLOW;    // Common 
-    } else if (expValue <= 20) {
-        color = BLUE; // Rare 
-    } else {
-        color = GREEN;  // Epic 
+Texture2D blueExpTexture = {};
+Texture2D greenExpTexture = {};
+Texture2D yellowExpTexture = {};
+Texture2D healthPotionTexture = {};
+bool texturesLoaded = false;
+
+void LoadItemTextures() {
+    if (texturesLoaded) return;
+
+    blueExpTexture = LoadTexture("Graphics/BlueExp.png");
+    greenExpTexture = LoadTexture("Graphics/GreenExp.png");
+    yellowExpTexture = LoadTexture("Graphics/YellowExp.png");
+    healthPotionTexture = LoadTexture("Graphics/HealthPotion.png");
+    texturesLoaded = true;
+}
+
+void UnloadItemTextures() {
+    if (!texturesLoaded) return;
+
+    UnloadTexture(blueExpTexture);
+    UnloadTexture(greenExpTexture);
+    UnloadTexture(yellowExpTexture);
+    UnloadTexture(healthPotionTexture);
+    texturesLoaded = false;
+}
+
+Texture2D Item::getTexture() const {
+    if (ID == 1) return healthPotionTexture;
+    if (expValue <= 10) return yellowExpTexture;
+    if (expValue <= 20) return blueExpTexture;
+    return greenExpTexture;
+}
+
+Item::Item(float ix, float iy, int val, int ID)
+    : expValue(val), ID(ID), timer(0.0f), duration(15.0f), drawSize(72.0f) {
+    x = ix;
+    y = iy;
+
+    if (ID == 1) {
+        drawSize = 84.0f;
+    } else if (expValue > 20) {
+        drawSize = 78.0f;
     }
 }
 
-// Cập nhật thời gian tồn tại
 void Item::update() {
-    timer += GetFrameTime(); 
+    timer += GetFrameTime();
 }
 
-// Vẽ
 void Item::draw() {
-    // Tính chớp 3 giây
     bool shouldDraw = true;
     if (timer >= duration - 3.0f) {
         if ((int)(timer * 10) % 2 != 0) {
-            shouldDraw = false; 
+            shouldDraw = false;
         }
     }
 
-    // Vẽ chớp
-    if (shouldDraw) {
-        if (ID == 1){
-            DrawRectangle(x-9, y-9, 18, 18, color);
-            DrawRectangleLines(x-9, y-9, 18, 18, WHITE);
-            return; 
-        } else if (ID == 0){
-        DrawCircle(x, y, 7, color);        
-        DrawCircleLines(x, y, 7, WHITE);   
-    }
-    }
+    if (!shouldDraw) return;
+
+    Texture2D texture = getTexture();
+    if (texture.id == 0) return;
+
+    Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
+    Rectangle dest = {x, y, drawSize, drawSize};
+    Vector2 origin = {drawSize * 0.5f, drawSize * 0.5f};
+    DrawTexturePro(texture, source, dest, origin, 0.0f, WHITE);
 }
