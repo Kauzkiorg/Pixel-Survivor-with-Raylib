@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "raymath.h"
 #include "../core/CollisionMap.h"
+#include <stdexcept>
 
 Player::Player() {
     x = 960;
@@ -26,8 +27,28 @@ int Player::getExpToNextLevel() const {
     return level * 100;
 }
 
+void Player::setScore(int newScore) {
+    // Không cho score âm để tránh trạng thái sai và có case test rõ ràng
+    if (newScore < MIN_PLAYER_SCORE) {
+        throw std::invalid_argument("Player::setScore - score must be >= 0");
+    }
+    score = newScore;
+}
+
+void Player::addScore(int amount) {
+    // Không cho cộng điểm âm.
+    if (amount < 0) {
+        throw std::invalid_argument("Player::addScore - amount must be >= 0");
+    }
+    score += amount;
+}
+
 // Hàm thêm exp
 void Player::addExp(int amount) {
+    if (amount < 0) {
+        throw std::invalid_argument("Player::addExp - amount must be >= 0");
+    }
+
     exp += amount;
     // Kiểm tra có cộng ko
     while (checkLevelUp()) {
