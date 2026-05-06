@@ -1,5 +1,16 @@
 #include "WaveManager.h"
-#include <cmath> 
+#include <cmath>
+#include <stdexcept>
+
+namespace {
+// Clamp wave index về phạm vi hợp lệ để gameplay và unit test cùng dùng chung rule
+int ClampMilestoneIndex(int milestoneIndex) {
+    if (milestoneIndex < 0) return 0;
+    if (milestoneIndex >= MAX_WAVE_NUMBER) return MAX_WAVE_NUMBER - 1;
+    return milestoneIndex;
+}
+}
+
 WaveManager::WaveManager() {
     internalTimer = 0.0f;
     currentMilestoneIdx = 0;
@@ -10,10 +21,7 @@ WaveManager::WaveManager() {
 void WaveManager::update(float deltaTime) {
     internalTimer += deltaTime;
     // cứ 30 giây mới chuyển wave
-    currentMilestoneIdx = (int) (internalTimer / 30.0f);
-    if (currentMilestoneIdx > 19) {
-        currentMilestoneIdx = 19; // giới hạn tại wave 20
-    }
+    currentMilestoneIdx = ClampMilestoneIndex((int)(internalTimer / 30.0f));
 }
 float WaveManager::getSpawnInterval() const {
     float baseInterval =  1.0f ;
@@ -72,15 +80,21 @@ int WaveManager::getRandomEnemyType() {
 }
 
 void WaveManager::setInternalTimer (float time) {
+    // ngăn timer âm làm sai trạng thái wave.
+    if (time < 0.0f) {
+        throw std::invalid_argument("WaveManager::setInternalTimer - time must be >= 0");
+    }
+
     internalTimer = time;
     bossSpawned = false;
-    if (internalTimer <= 30.0f) {
-        currentMilestoneIdx = 0;
-    } else {
-        currentMilestoneIdx = (int)(internalTimer / 30.0f);
-    }
+    currentMilestoneIdx = ClampMilestoneIndex((int)(internalTimer / 30.0f));
 }
 void WaveManager::setDifficulty(int id) {
+    // Ngoại lệ rõ ràng cho input sai 
+    if (id < MIN_DIFFICULTY_ID || id > MAX_DIFFICULTY_ID) {
+        throw std::invalid_argument("WaveManager::setDifficulty - invalid difficulty id");
+    }
+
     difficultyID = id;
     switch (id){
         case 0:

@@ -1,6 +1,15 @@
 #pragma once
 #include "raylib.h"
 #include <cmath>
+
+// Các hằng số này được tách riêng để:
+// 1) dùng chung trong gameplay,
+// 2) dễ assert trong unit test,
+// 3) tránh hard-code nhiều nơi.
+constexpr int MIN_DIFFICULTY_ID = 0;
+constexpr int MAX_DIFFICULTY_ID = 2;
+constexpr int MAX_WAVE_NUMBER = 20;
+
 class WaveManager {
  private:
     float internalTimer;

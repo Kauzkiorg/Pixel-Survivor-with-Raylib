@@ -1,6 +1,7 @@
 #include "Skill.h"
 #include "../enemy/Enemy.h"
 #include "raymath.h"
+#include <stdexcept>
 
 namespace {
 // Chuan hoa huong bay, tranh vector 0 gay loi projectile
@@ -11,6 +12,13 @@ Vector2 NormalizeOrFallback(Vector2 direction) {
 
 Skill::Skill(Player* p, int skillType) : player(p) {
     // Khoi tao skill theo type va set stat ban dau
+    if (p == nullptr) {
+        throw std::invalid_argument("Skill::Skill - player pointer must not be null");
+    }
+    if (skillType < 0 || skillType > 4) {
+        throw std::invalid_argument("Skill::Skill - invalid skill type");
+    }
+
     type = skillType;
     level = 1;
     x = p->getX();
@@ -51,8 +59,12 @@ int Skill::getLevel() const {
 }
 
 void Skill::setLevel(int newLevel) {
-    // Khoa level vao khoang hop le va tinh lai stat
-    level = newLevel < 0 ? 0 : (newLevel > 10 ? 10 : newLevel);
+    // Ngoại lệ ở đây là ví dụ rõ ràng cho việc validate dữ liệu nâng cấp.
+    if (newLevel < 0 || newLevel > 10) {
+        throw std::out_of_range("Skill::setLevel - level must be in range [0, 10]");
+    }
+
+    level = newLevel;
     if (level <= 0) {
         activeShields.clear();
         activeHammers.clear();
