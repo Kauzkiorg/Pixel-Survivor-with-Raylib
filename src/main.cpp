@@ -16,17 +16,29 @@
 #include "weapon/weapon.h"
 #include "upgrade/UpgradeSystem.h"
 using namespace std;
+vector<Texture2D> LoadGifToVector(const char* fileName) {
+    vector<Texture2D> frames;
+    int animFramesCount = 0;
+    Image animImg = LoadImageAnim(fileName, &animFramesCount);
+    for (int i = 0; i < animFramesCount; i++) {
+        Image frameImg = ImageExtractFrame(animImg, i, NULL);
+        frames.push_back(LoadTextureFromImage(frameImg));
+        UnloadImage(frameImg);
+    }
+    UnloadImage(animImg);
+    return frames;
+}
 
 // Tai sprite cho 5 loai enemy vao mang dung chung
-void loadEnemySprites(Texture2D sprites[]) {
+void loadEnemySprites(vector<Texture2D> anims[]) {
     const char* paths[5] = {
-        "Graphics/NormalWalk.png",
-        "Graphics/Venom-removebg-preview.png",
-        "Graphics/Supreme-Leader-Ultron-removebg-preview.png",
-        "Graphics/Loki-removebg-preview.png",
-        "Graphics/Thanos Perler Bead Pattern.png"
+        "Graphics/Normal.gif",
+        "Graphics/Fast.gif",
+        "Graphics/Tank.gif",
+        "Graphics/Ranged",
+        "Graphics/Boss.gif"
     };
-    for (int i = 0; i < 5; i++) sprites[i] = LoadTexture(paths[i]);
+    for (int i = 0; i < 5; i++) anims[i] = LoadGifToVector(paths[i]);
 }
 
 // Doc phim 1 2 3 de chon do kho
@@ -162,7 +174,7 @@ void fireEnemyBullets(vector<Enemy*>& enemies, Player& player, vector<Bullet*>& 
 }
 
 // Spawn quai theo wave hien tai, co xu ly rieng cho boss
-void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySprites[], vector<Enemy*>& enemies, vector<Entity*>& entities) {
+void spawnEnemyWave(WaveManager& waveSystem, Player& player, vector<Texture2D> enemyAnims[], vector<Enemy*>& enemies, vector<Entity*>& entities) {
     const float PIXEL_SPAWN_RADIUS = 960.0f;
     float angle = GetRandomValue(0, 360) * (PI / 180.0f);
     float spawnX = player.getX() + cos(angle) * PIXEL_SPAWN_RADIUS;
@@ -171,7 +183,7 @@ void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySpri
     float diffHPMult = waveSystem.getDifficultyHPMultiplier();
 
     if (waveSystem.shouldSpawnBoss()) {
-        Boss* boss = new Boss(&player, 0, &enemySprites[4]);
+        Boss* boss = new Boss(&player, 0, &enemyAnims[4]);
         boss->setPosition(spawnX, spawnY);
         boss->setDamage(waveSystem.getCurrentWaveDamage() * 3);
         boss->setHp((int)(boss->getHp() * multiplier * diffHPMult * 2.0f));
@@ -184,7 +196,7 @@ void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySpri
 
     if (waveSystem.getCurrentWaveNumber() == 20 && GetRandomValue(0, 100) > 30) return;
     int type = waveSystem.getRandomEnemyType();
-    Enemy* enemy = new Enemy(&player, type, &enemySprites[type]);
+    Enemy* enemy = new Enemy(&player, type, &enemyAnims[type]);
     enemy->setPosition(spawnX, spawnY);
     enemy->setHp((int)(enemy->getHp() * multiplier * diffHPMult));
     enemy->setSpeed(enemy->getSpeed() * waveSystem.getDifficultySpeedMultiplier());
@@ -199,9 +211,11 @@ int main() {
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     InitCollisionMap("Graphics/gameBgCollision.png");
-
-    Texture2D enemySprites[5];
-    loadEnemySprites(enemySprites);
+    
+    vector<Texture2D> LoadGifToVector(const char* fileName);
+    vector<Texture2D> enemyAnims[5];
+    loadEnemySprites(enemyAnims);
+    void spawnEnemyWave(WaveManager& waveSystem, Player& player, vector<Texture2D> enemyAnims[], vector<Enemy*>& enemies, vector<Entity*>& entities);
     Texture2D floorTexture = LoadTexture("Graphics/Floor.png");
     Texture2D wallsTexture = LoadTexture("Graphics/Walls.png");
     Texture2D mainScreenTexture = LoadTexture("Graphics/Main screen.png");
@@ -317,7 +331,7 @@ int main() {
             // Spawn quai theo nhip cua wave manager
             spawnTimer += dt;
             if (spawnTimer >= waveSystem.getSpawnInterval()) {
-                spawnEnemyWave(waveSystem, player, enemySprites, enemies, entities);
+                spawnEnemyWave(waveSystem, player, enemyAnims, enemies, entities);
                 spawnTimer = 0.0f;
             }
 
@@ -514,7 +528,10 @@ int main() {
     }
     // Giai phong texture truoc khi dong cua so
     for (int i=0; i<5 ; i++){
-        UnloadTexture(enemySprites[i]);
+        for(size_t j = 0; j<enemyAnims[i].size(); j++){
+             UnloadTexture(enemyAnims[i][j]);
+        }
+        enemyAnims[i].clear();
     }
     UnloadTexture(mainScreenTexture);
     UnloadTexture(floorTexture);

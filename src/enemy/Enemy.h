@@ -3,11 +3,12 @@
 #include "../core/Entity.h"
 #include "../player/Player.h"
 #include "raylib.h"
+#include <vector>
 
 class Enemy : public Entity {
 protected:
     Player* player;
-    Texture2D *texture;
+    std::vector<Texture2D> *animFrames;
     // insert ID enemy
     // NORMAL : 0
     // FAST : 1
@@ -24,15 +25,14 @@ protected:
     float fireTimer = 0.0f;
     // cài damage mặc định 
     int damage = 1;
-    Texture2D EnemyTexture = {0};
-    Texture2D EnemyWalkTexture = {0};
+
     int walkFrame = 0;      // Khung hình hiện tại (0-7)
     float walkTimer = 0.0f; // Bộ đếm thời gian chuyển khung
     bool isWalking = false; // Trạng thái có đang di chuyển không
-    int totalFrames = 8;    // Tổng số khung hình trên tấm ảnh 
+    int totalFrames = 0;    // Bien de tu dong lay so luong frame cua GIF
 public:
     //Constructor
-    Enemy(Player* p, int type, Texture2D* tex);
+    Enemy(Player* p, int type, std::vector<Texture2D>* frames);
     void update() override;
     void draw() override;
     bool canShoot();

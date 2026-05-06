@@ -1,7 +1,8 @@
 #include "Boss.h"
+#include<vector>
 
 // Khởi tạo boss
-Boss::Boss(Player* p, int type, Texture2D* tex) : Enemy(p, type, tex) {
+Boss::Boss(Player* p, int type, std::vector<Texture2D>* frames) : Enemy(p, type, frames) {
     this->setHp(5000);           
     this->maxArmor = 1000.0f;       
     this->currentArmor = maxArmor;
@@ -55,17 +56,22 @@ void Boss::update() {
 }
 
 void Boss::draw() {
-    if (texture !=nullptr){
+    if (animFrames != nullptr && !animFrames->empty()) {
         // ep khung hinh voi hit box 70px
         float targetSize = 240.0f;
+        // lay frame hien tai
+        Texture2D currentTex = (*animFrames)[walkFrame];
+
+        float frameWidth = (float)currentTex.width;
+        float frameHeight = (float)currentTex.height;
         // tạo cấu hình vùng ảnh
-        Rectangle source = { 0.0f, 0.0f, (float)texture->width* rotation, (float)texture->height };
+        Rectangle source = { 0.0f, 0.0f, frameWidth* rotation, frameHeight };
         // tạo cấu hình vùng va chạm
         Rectangle dest = { x, y, targetSize, targetSize };
         // thiết lập điểm gốc (tâm hình chữ nhật) để tính góc xoay từ tâm
         Vector2 origin = { targetSize / 2.0f, targetSize / 2.0f };
         // Vẽ
-        DrawTexturePro(*texture, source, dest, origin, 0.0f, WHITE);
+        DrawTexturePro(currentTex, source, dest, origin, 0.0f, WHITE);
     }
     // EP THANH MAU VA THANH GIAP
     float barWidth = 220.0f; 

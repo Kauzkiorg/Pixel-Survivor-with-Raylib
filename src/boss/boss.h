@@ -2,6 +2,7 @@
 #define BOSS_H
 
 #include "../enemy/Enemy.h"
+#include<vector>
 
 class Boss : public Enemy {
 private:
@@ -15,7 +16,7 @@ private:
 
 public:
     // Constructor gọi từ lớp cha Enemy
-    Boss(Player* p, int type, Texture2D* tex);
+    Boss(Player* p, int type, std::vector<Texture2D>* frames);
 
     // Các hàm ghi đè logic
     void update() override;
