@@ -2,6 +2,7 @@
 #include "level.h"
 #include "raylib.h"
 #include "raymath.h"
+#include <stdexcept>
 
 namespace {
 // Chuan hoa huong bay, tranh vector 0 gay loi projectile
@@ -17,6 +18,10 @@ float GetProjectileRotation(const WeaponProjectile& projectile) {
 
 Weapon::Weapon(int type) {
     // Khoi tao vu khi theo type va set stat ban dau
+    if (type < 0 || type > 3) {
+        throw std::invalid_argument("Weapon::Weapon - invalid weapon type");
+    }
+
     weaponType = type;
     weaponLevel = 1;
     currentCooldownTimer = 0.0f;
@@ -32,8 +37,12 @@ int Weapon::getLevel() const {
 }
 
 void Weapon::setLevel(int newLevel) {
-    // Khoa level vao khoang hop le va tinh lai stat
-    weaponLevel = newLevel < 0 ? 0 : (newLevel > 10 ? 10 : newLevel);
+    // Ngoại lệ ở đây giúp minh họa kiểm soát dữ liệu nâng cấp vượt thiết kế.
+    if (newLevel < 0 || newLevel > 10) {
+        throw std::out_of_range("Weapon::setLevel - level must be in range [0, 10]");
+    }
+
+    weaponLevel = newLevel;
     updateWeaponStats();
 }
 

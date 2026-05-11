@@ -3,6 +3,9 @@
 #include "raylib.h"
 #include <vector>
 
+// Giới hạn score tối thiểu/tối đa để: tránh dữ liệu âm không mong muốn, unit test
+constexpr int MIN_PLAYER_SCORE = 0;
+
 struct Bullet; // Forward declaration
 
 class Player : public Entity {
@@ -47,8 +50,8 @@ public:
     void setMaxHp(int newMaxHp) { maxHp = newMaxHp; }
     void setLevel(int newLevel) { level = newLevel; }
     void setExp(int newExp) { exp = newExp; }
-    void setScore(int newScore) { score = newScore; } // Setter for score
-    void addScore(int amount) { score += amount; } // Method to add to score
+    void setScore(int newScore); // Setter có validate để phục vụ exception + unit test
+    void addScore(int amount); // Method có validate để phục vụ exception + unit test
     void setSpeed(float newSpeed) { speed = newSpeed; }
     void setDamage(int newDamage) { damage = newDamage; }
     void addExp(int amount); // Add EXP and check for level up

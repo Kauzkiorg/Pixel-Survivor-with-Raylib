@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <exception>
 
 #include "core/Entity.h"
 #include "core/CollisionMap.h"
@@ -194,61 +195,64 @@ void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySpri
 }
 
 int main() {
-    // Khoi tao cua so game, FPS va collision map
-    InitWindow(1920, 1040, "Arcane Rampage");
-    SetExitKey(KEY_NULL);
-    SetTargetFPS(60);
-    InitCollisionMap("Graphics/gameBgCollision.png");
+    // Bọc phần khởi tạo/chạy game trong try-catch để đáp ứng yêu cầu
+    // Nếu asset/config lỗi, game sẽ log và thoát an toàn.
+    try {
+        // Khoi tao cua so game, FPS va collision map
+        InitWindow(1920, 1040, "Arcane Rampage");
+        SetExitKey(KEY_NULL);
+        SetTargetFPS(60);
+        InitCollisionMap("Graphics/gameBgCollision.png");
 
-    Texture2D enemySprites[5];
-    loadEnemySprites(enemySprites);
-    Texture2D floorTexture = LoadTexture("Graphics/Floor.png");
-    Texture2D wallsTexture = LoadTexture("Graphics/Walls.png");
-    Texture2D mainScreenTexture = LoadTexture("Graphics/Main screen.png");
-    LoadItemTextures();
-    // Toan bo state runtime chinh cua tran dau
-    Player player;
-    WaveManager waveSystem;
-    vector<Entity*> entities = {&player};
-    vector<Enemy*> enemies;
-    vector<Bullet*> bullets;
-    vector<Item*> items;
-    vector<WeaponProjectile> weaponProjectiles;
-    float spawnTimer = 0.0f;
-    float hpSpawnTimer = 0.0f;
-    bool isPaused = false;
-    Rectangle pauseButton = { 1850, 10, 50, 50 };
-    float gameTimer = 0.0f;
-    int currentDiffID = -1;
-    bool gameStarted = false;
-    bool showTitleScreen = true;
+        Texture2D enemySprites[5];
+        loadEnemySprites(enemySprites);
+        Texture2D floorTexture = LoadTexture("Graphics/Floor.png");
+        Texture2D wallsTexture = LoadTexture("Graphics/Walls.png");
+        Texture2D mainScreenTexture = LoadTexture("Graphics/Main screen.png");
+        LoadItemTextures();
+        // Toan bo state runtime chinh cua tran dau
+        Player player;
+        WaveManager waveSystem;
+        vector<Entity*> entities = {&player};
+        vector<Enemy*> enemies;
+        vector<Bullet*> bullets;
+        vector<Item*> items;
+        vector<WeaponProjectile> weaponProjectiles;
+        float spawnTimer = 0.0f;
+        float hpSpawnTimer = 0.0f;
+        bool isPaused = false;
+        Rectangle pauseButton = { 1850, 10, 50, 50 };
+        float gameTimer = 0.0f;
+        int currentDiffID = -1;
+        bool gameStarted = false;
+        bool showTitleScreen = true;
 
-    // Danh sach skill tong va inventory skill dang trang bi
-    vector<Skill*> allSkills = {
-        new Skill(&player, SKILL_LASER_BEAM),
-        new Skill(&player, SKILL_THUNDER_STRIKE),
-        new Skill(&player, SKILL_SHURIKEN),
-        new Skill(&player, SKILL_SHIELD),
-        new Skill(&player, SKILL_HAMMER)
-    };
-    vector<Skill*> skillInventory;
-    for (auto s : allSkills) s->setLevel(0);
+        // Danh sach skill tong va inventory skill dang trang bi
+        vector<Skill*> allSkills = {
+            new Skill(&player, SKILL_LASER_BEAM),
+            new Skill(&player, SKILL_THUNDER_STRIKE),
+            new Skill(&player, SKILL_SHURIKEN),
+            new Skill(&player, SKILL_SHIELD),
+            new Skill(&player, SKILL_HAMMER)
+        };
+        vector<Skill*> skillInventory;
+        for (auto s : allSkills) s->setLevel(0);
 
-    Weapon hammer(0), magicWand(1), knife(2), spellBook(3);
-    Weapon* currentWeapon = nullptr;
-    UpgradeSystem upgradeSystem;
-    hammer.setLevel(0);
-    magicWand.setLevel(0);
-    knife.setLevel(0);
-    spellBook.setLevel(0);
+        Weapon hammer(0), magicWand(1), knife(2), spellBook(3);
+        Weapon* currentWeapon = nullptr;
+        UpgradeSystem upgradeSystem;
+        hammer.setLevel(0);
+        magicWand.setLevel(0);
+        knife.setLevel(0);
+        spellBook.setLevel(0);
 
-    vector<Weapon*> allWeapons = {&hammer, &magicWand, &knife, &spellBook};
-    vector<Weapon*> weaponInventory;
-    bool shouldShowUpgrade = true;
-    int previousLevel = 1;
+        vector<Weapon*> allWeapons = {&hammer, &magicWand, &knife, &spellBook};
+        vector<Weapon*> weaponInventory;
+        bool shouldShowUpgrade = true;
+        int previousLevel = 1;
 
-    // Vong lap game chinh
-    while (!WindowShouldClose()) {
+        // Vong lap game chinh
+        while (!WindowShouldClose()) {
         if (showTitleScreen) {
             if (IsKeyPressed(KEY_SPACE)) showTitleScreen = false;
             drawTitleScreen(mainScreenTexture);
@@ -511,17 +515,26 @@ int main() {
             }
         }
         EndDrawing();
+        }
+        // Giai phong texture truoc khi dong cua so
+        for (int i=0; i<5 ; i++){
+            UnloadTexture(enemySprites[i]);
+        }
+        UnloadTexture(mainScreenTexture);
+        UnloadTexture(floorTexture);
+        UnloadTexture(wallsTexture);
+        UnloadItemTextures();
+        CloseWindow();
+        return 0;
     }
-    // Giai phong texture truoc khi dong cua so
-    for (int i=0; i<5 ; i++){
-        UnloadTexture(enemySprites[i]);
+    catch (const std::exception& e) {
+        //bắt ngoại lệ ở tầng cao nhất và thoát an toàn
+        TraceLog(LOG_ERROR, "Fatal error: %s", e.what());
+        if (IsWindowReady()) {
+            CloseWindow();
+        }
+        return -1;
     }
-    UnloadTexture(mainScreenTexture);
-    UnloadTexture(floorTexture);
-    UnloadTexture(wallsTexture);
-    UnloadItemTextures();
-    CloseWindow();
-    return 0;
 
 }
  

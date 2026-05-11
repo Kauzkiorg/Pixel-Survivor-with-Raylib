@@ -1,5 +1,6 @@
 #include "CollisionMap.h"
 #include <cstdio>
+#include <stdexcept>
 
 // Khời tạo map set trc g. trị
 CollisionMap::CollisionMap() : pixelData(nullptr), width(0), height(0), loaded(false) {
@@ -29,6 +30,11 @@ bool CollisionMap::load(const std::string& filename) {
         unload();
     }
 
+    // Kiểm tra đầu vào sớm 
+    if (filename.empty()) {
+        throw std::invalid_argument("CollisionMap::load - filename must not be empty");
+    }
+
     collisionImage = LoadImage(filename.c_str());
     if (collisionImage.data == nullptr) {
         collisionImage = { 0 };
@@ -37,7 +43,9 @@ bool CollisionMap::load(const std::string& filename) {
         height = 0;
         loaded = false;
         TraceLog(LOG_ERROR, "CollisionMap: Failed to load image: %s", filename.c_str());
-        return false;
+
+        // Ném runtime_error để tầng main có thể bắt và thoát an toàn.
+        throw std::runtime_error("CollisionMap::load - failed to load image: " + filename);
     }
 
     // Đổi pixel sang RGBA để dễ check màu
@@ -121,6 +129,7 @@ Color CollisionMap::getPixelColor(float worldX, float worldY) const {
 CollisionMap gCollisionMap;
 
 void InitCollisionMap(const std::string& filename) {
+    // nếu map lỗi. main() sẽ là nơi chịu trách nhiệm catch.
     gCollisionMap.load(filename);
 }
 
