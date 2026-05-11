@@ -10,16 +10,20 @@ Enemy::Enemy(Player* p, int type, Texture2D* tex) : player(p), texture(tex), ene
     if (type == 0) { // NORMAL
         hp = 30;
         speed = 1.0f;
+        frameCount = 8;
     } else if (type == 1) { // FAST
         hp = 15;
         speed = 2.0f;
+        frameCount = 4;
     } else if (type == 2) { // TANK
         hp = 100;
         speed = 0.5f;
+        frameCount = 6;
     } else if (type == 3) { // RANGED
         hp = 30;
         speed = 0.5f;
         stoppingDistance = (float)GetRandomValue(200,300);
+        frameCount = 5;
     } else {
         stoppingDistance = 0.0f;
     }

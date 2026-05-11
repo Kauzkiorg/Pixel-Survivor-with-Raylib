@@ -150,13 +150,13 @@ void Player::draw() {
     float frameWidth = (float)currentTexture.width;
     float frameHeight = (float)currentTexture.height;
     int currentFrame = 0;
-    float drawWidth = 128.0f;
-    float drawHeight = 128.0f;
+    float drawWidth = 80.0f;
+    float drawHeight = 80.0f;
 
     if (isWalking) {
         frameWidth = (float)currentTexture.width / 8.0f;
         currentFrame = walkFrame;
-        drawHeight = 300.0f;
+        drawHeight = 200.0f;
         drawWidth = drawHeight * (frameWidth / frameHeight);
     }
 

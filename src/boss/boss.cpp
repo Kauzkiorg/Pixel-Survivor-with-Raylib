@@ -3,7 +3,7 @@
 // Khởi tạo boss
 Boss::Boss(Player* p, int type, Texture2D* tex) : Enemy(p, type, tex) {
     this->setHp(5000);  
-    this->setAnimation(8,0.12f);      
+    this->setAnimation(8, 0.12f);
     this->maxArmor = 1000.0f;       
     this->currentArmor = maxArmor;
     this->damageReduction = 0.4f;   
@@ -58,14 +58,15 @@ void Boss::update() {
 void Boss::draw() {
     if (texture !=nullptr){
         // ep khung hinh voi hit box 70px
-        float targetSize = 240.0f;
+        float targetWidth = 240.0f;
+        float targetHeight = 260.0f;
         float frameWidth = (float)texture->width / frameCount;
         // tạo cấu hình vùng ảnh
         Rectangle source = {frameWidth * currentFrame, 0.0f, frameWidth * rotation, (float)texture->height };
         // tạo cấu hình vùng va chạm
-        Rectangle dest = { x, y, targetSize, targetSize };
+        Rectangle dest = { x, y, targetWidth, targetHeight };
         // thiết lập điểm gốc (tâm hình chữ nhật) để tính góc xoay từ tâm
-        Vector2 origin = { targetSize / 2.0f, targetSize / 2.0f };
+        Vector2 origin = { targetWidth / 2.0f, targetHeight / 2.0f };
         // Vẽ
         DrawTexturePro(*texture, source, dest, origin, 0.0f, WHITE);
     }
