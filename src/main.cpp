@@ -331,7 +331,7 @@ int main() {
                 for (size_t j = 0; j < bullets.size(); j++) {
                     if (!bullets[j]->getIsEnemyBullet() &&
                         Vector2Distance({bullets[j]->getX(), bullets[j]->getY()}, {enemies[i]->getX(), enemies[i]->getY()}) < hitboxRadius) {
-                        enemies[i]->takeDamage(20);
+                        enemies[i]->getDamage();
                         bullets[j]->setX(-1000);
                     }
                 }

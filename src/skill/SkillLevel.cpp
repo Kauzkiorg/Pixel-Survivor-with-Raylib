@@ -2,11 +2,11 @@
 
 // Chi so goc cua tung skill truoc khi cong bonus level
 const SkillStats BASE_SKILL_STATS[] = {
-    {15, 5.0f, 400.0f, 0.0f, 1, 14.0f, false},
-    {20, 5.0f, 450.0f, 0.0f, 1, 120.0f, false},
-    {10, 0.0f, 70.0f, 0.0f, 1, 18.0f, false},
-    {15, 4.5f, 18.0f, 280.0f, 1, 18.0f, false},
-    {25, 2.2f, 0.0f, 320.0f, 1, 24.0f, false}
+    {15, 5.0f, 400.0f, 0.0f, 1, 14.0f, false}, // Laser
+    {20, 5.0f, 450.0f, 0.0f, 1, 120.0f, false}, // Thunder
+    {10, 0.0f, 120.0f, 0.0f, 1, 18.0f, false}, // Shuriken 
+    {15, 4.5f, 1500.0f, 700.0f, 1, 30.0f, false},//shield 
+    {25, 2.2f, 2000.0f, 1000.0f, 1, 24.0f, false},  // Hammer 
 };
 
 // Tra ten hien thi theo ma skill

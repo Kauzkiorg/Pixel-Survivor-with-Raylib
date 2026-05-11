@@ -1,6 +1,7 @@
 #include "Skill.h"
 #include "../enemy/Enemy.h"
 #include "raymath.h"
+#include "../core/CollisionMap.h"
 #include <stdexcept>
 
 namespace {
@@ -120,37 +121,8 @@ void Skill::update(std::vector<Enemy*>& enemies) {
     shield_timer += dt;
     hammer_timer += dt;
 
-    // Logic di chuyen vat the bay: Khiên
-    for (auto& shield : activeShields) {
-        if (!shield.active) continue;
-        shield.pos.x += shield.speed.x * dt;
-        shield.pos.y += shield.speed.y * dt;
-        shield.rotation += 200.0f * dt;
-
-        // Nay bat tuong
-        if (shield.pos.x < 0 || shield.pos.x > 800) {
-            shield.speed.x *= -1;
-            shield.bounces++;
-        }
-        if (shield.pos.y < 0 || shield.pos.y > 600) {
-            shield.speed.y *= -1;
-            shield.bounces++;
-        }
-
-        // Nay du 3 lan thi xoa
-        if (shield.bounces > 3) shield.active = false;
-    }
-
-    // Logic di chuyen vat the bay: Bua
-    for (auto& hammer : activeHammers) {
-        if (!hammer.active) continue;
-        hammer.pos.x += hammer.speed.x * dt;
-        hammer.pos.y += hammer.speed.y * dt;
-        hammer.rotation += 10.0f * dt;
-
-        // Bay khoi man hinh thi tat
-        if (hammer.pos.x < -100 || hammer.pos.x > 900 || hammer.pos.y < -100 || hammer.pos.y > 700) hammer.active = false;
-    }
+    // Note: Shield and Hammer movement is handled in triggerShieldCollision and triggerHammerCollision
+    // to avoid duplicate movement and use proper camera-based boundaries
 
     if (type == SKILL_SHURIKEN) {
         triggerShurikenCollision(enemies);
@@ -225,72 +197,123 @@ void Skill::triggerThunder(std::vector<Enemy*>& enemies) {
     thunderEffectTimer = 0.2f;
 }
 
+
 void Skill::triggerShieldCollision(std::vector<Enemy*>& enemies) {
-    // Tao khiên moi dua tren timer
+    float dt = GetFrameTime();
+
+    // 1. SINH KHIÊN: Dựa hoàn toàn vào stats.count và stats.cooldown từ Level
     if (type == SKILL_SHIELD && shield_timer >= stats.cooldown) {
         shield_timer = 0.0f;
         for (int i = 0; i < stats.count; i++) {
-            float angleRad = GetRandomValue(0, 360) * DEG2RAD;
-            activeShields.push_back({{x, y}, {cosf(angleRad) * stats.speed, sinf(angleRad) * stats.speed}, 0, true, stats.effectRadius, 0.0f});
+            float randomAngle = (float)GetRandomValue(0, 360) * DEG2RAD;
+            float spawnX = player->getX() + cosf(randomAngle) * 50.0f;
+            float spawnY = player->getY() + sinf(randomAngle) * 50.0f;
+
+            activeShields.push_back({
+                { spawnX, spawnY }, 
+                { cosf(randomAngle) * stats.speed, sinf(randomAngle) * stats.speed }, 
+                0,    // Bắt đầu bounces = 0
+                true, 
+                stats.effectRadius, 
+                0.0f  
+            });
         }
     }
 
-    // Check va cham cho nhung cai khiên dang bay
-    for (auto& shield : activeShields) {
-        if (!shield.active) continue;
+    // 2. BIÊN CAMERA: Để nảy đúng khung hình
+    Vector2 minW = GetScreenToWorld2D({ 0, 0 }, player->getCamera());
+    Vector2 maxW = GetScreenToWorld2D({ (float)GetScreenWidth(), (float)GetScreenHeight() }, player->getCamera());
+
+    for (int i = (int)activeShields.size() - 1; i >= 0; i--) {
+        auto& s = activeShields[i];
+        s.pos.x += s.speed.x * dt;
+        s.pos.y += s.speed.y * dt;
+        s.rotation += 500.0f * dt;
+        // 3. NẢY BẬT
+        if ((s.pos.x < minW.x && s.speed.x < 0) || (s.pos.x > maxW.x && s.speed.x > 0)) {
+            s.speed.x *= -1;
+            s.bounces++;
+        }
+        if ((s.pos.y < minW.y && s.speed.y < 0) || (s.pos.y > maxW.y && s.speed.y > 0)) {
+            s.speed.y *= -1;
+            s.bounces++;
+        }
+        // 4. LOGIC XÓA DỰA TRÊN LEVEL
+        bool isTooFar = Vector2Distance({player->getX(), player->getY()}, s.pos) > stats.range;
+        // Nếu nảy quá nhiều (ví dụ 6 lần) HOẶC vượt quá tầm xa của Level hiện tại
+        if (s.bounces >= 3 || isTooFar) {
+            s.active = false;
+        }
+        if (!s.active) {
+            activeShields.erase(activeShields.begin() + i);
+            continue;
+        }
+        // 5. VA CHẠM: Dùng stats.damage từ Level
         for (Enemy* enemy : enemies) {
-            if (!enemy) continue;
-            if (CheckCollisionCircles(shield.pos, shield.radius, {enemy->getX(), enemy->getY()}, 20)) {
-                enemy->takeDamage(stats.damage);
+            if (CheckCollisionCircles(s.pos, s.radius, {enemy->getX(), enemy->getY()}, 20)) {
+                enemy->takeDamage(stats.damage / 10 + 1); 
             }
         }
     }
 }
-
 void Skill::triggerHammerCollision(std::vector<Enemy*>& enemies) {
+    float dt = GetFrameTime();
+
+    // 1. SINH BÚA: Dùng stats.cooldown và stats.count từ SkillLevel.cpp
     if (type == SKILL_HAMMER && hammer_timer >= stats.cooldown && !enemies.empty()) {
         Enemy* target = findNearestEnemy(enemies);
         if (target) {
             hammer_timer = 0.0f;
-
-            // Huong goc toi quai
-            Vector2 baseDir = NormalizeOrFallback(Vector2Subtract({target->getX(), target->getY()}, {x, y}));
-            float baseAngle = atan2f(baseDir.y, baseDir.x);
-
-            // Nem theo so luong
+            Vector2 dir = NormalizeOrFallback(Vector2Subtract({target->getX(), target->getY()}, {player->getX(), player->getY()}));
+            
             for (int i = 0; i < stats.count; i++) {
-                // Tinh do lech goc: 20 do moi tia
-                float spread = 20.0f * DEG2RAD;
-                float offset = (i - stats.count / 2) * spread;
-                if (stats.count % 2 == 0) offset += 10.0f * DEG2RAD;
-                float finalAngle = baseAngle + offset;
-                Vector2 finalDir = {cosf(finalAngle), sinf(finalAngle)};
+                // Sinh ngay tại tâm Player
+                Vector2 spawnPos = { player->getX(), player->getY() };
+                
+                Hammer newHammer;
+                newHammer.pos = spawnPos;
+                // Vận tốc bay lấy từ stats.speed của Level
+                newHammer.speed = Vector2Scale(dir, stats.speed);
+                newHammer.active = true;
+                newHammer.rotation = 0.0f;
+                newHammer.isRiu = (level >= 10);
+                newHammer.lastHitEnemy = nullptr; 
 
-                activeHammers.push_back({
-                    {x, y},
-                    Vector2Scale(finalDir, stats.speed),
-                    true,
-                    0,
-                    stats.special,
-                    nullptr
-                });
+                activeHammers.push_back(newHammer);
             }
         }
     }
 
-    // Logic bay xuyen cho bua va riu
-    for (auto& hammer : activeHammers) {
-        if (!hammer.active) continue;
+    // 2. CẬP NHẬT DI CHUYỂN
+    for (int i = (int)activeHammers.size() - 1; i >= 0; i--) {
+        auto& h = activeHammers[i];
+        
+        // Búa bay thẳng theo hướng ban đầu, tốc độ dựa trên Level
+        h.pos.x += h.speed.x * dt;
+        h.pos.y += h.speed.y * dt;
+        h.rotation += 10.0f * dt;
 
+        // 3. LOGIC XÓA DỰA TRÊN LEVEL:
+        // Dùng stats.range từ Level để quyết định búa bay bao xa thì biến mất
+        if (Vector2Distance({player->getX(), player->getY()}, h.pos) > stats.range) {
+            h.active = false;
+        }
+
+        if (!h.active) {
+            activeHammers.erase(activeHammers.begin() + i);
+            continue;
+        }
+
+        // 4. VA CHẠM DỰA TRÊN LEVEL:
         for (Enemy* enemy : enemies) {
             if (!enemy) continue;
-            // Bo qua neu vua moi chem con quai nay o frame truoc
-            if (hammer.lastHitEnemy == (void*)enemy) continue;
-            if (CheckCollisionCircles(hammer.pos, 25, {enemy->getX(), enemy->getY()}, 20)) {
-                // Gay sat thuong 1 lan duy nhat
-                enemy->takeDamage(stats.damage);
-                // Danh dau muc tieu vua trung de tranh lap damage lien tuc
-                hammer.lastHitEnemy = (void*)enemy;
+
+            // Cơ chế gây dame 1 lần: Chỉ dame nếu búa này chưa từng chạm con quái này
+            if (h.lastHitEnemy != (void*)enemy) { 
+                if (CheckCollisionCircles(h.pos, 35, {enemy->getX(), enemy->getY()}, 20)) {
+                    enemy->takeDamage(stats.damage); // Dame từ stats của Level
+                    h.lastHitEnemy = (void*)enemy; 
+                }
             }
         }
     }
@@ -348,12 +371,12 @@ void Skill::draw() {
 
     // Ve khiên nay
     for (auto& shield : activeShields) {
-        if (shield.active && shieldTexture.id > 0) {
-            float drawSize = shield.radius * 1.5f;
-            DrawTexturePro(shieldTexture,
-                {0, 0, (float)shieldTexture.width, (float)shieldTexture.height},
-                {shield.pos.x, shield.pos.y, drawSize, drawSize},
-                {drawSize / 2.0f, drawSize / 2.0f}, shield.rotation, WHITE);
+    if (shield.active && shieldTexture.id > 0) {
+        float drawSize = 80.0f; // Vẽ to lên cho dễ nhìn[cite: 15]
+        DrawTexturePro(shieldTexture,
+            {0, 0, (float)shieldTexture.width, (float)shieldTexture.height},
+            {shield.pos.x, shield.pos.y, drawSize, drawSize},
+            {drawSize / 2.0f, drawSize / 2.0f}, shield.rotation, WHITE);
         }
     }
 
