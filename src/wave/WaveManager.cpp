@@ -21,7 +21,7 @@ WaveManager::WaveManager() {
 void WaveManager::update(float deltaTime) {
     internalTimer += deltaTime;
     // cứ 30 giây mới chuyển wave
-    currentMilestoneIdx = ClampMilestoneIndex((int)(internalTimer / 5.0f));
+    currentMilestoneIdx = ClampMilestoneIndex((int)(internalTimer / 30.0f));
 }
 float WaveManager::getSpawnInterval() const {
     float baseInterval =  1.0f ;
