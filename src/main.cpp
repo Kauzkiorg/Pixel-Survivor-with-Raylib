@@ -161,8 +161,24 @@ bool drawGameOver(Player& player, float gameTimer) {
 }
 
 // Ve man hinh chien thang khi qua wave cuoi va diet boss
-bool drawVictory(WaveManager& waveSystem, vector<Enemy*>& enemies, Player& player) {
-    if (waveSystem.getCurrentWaveNumber() != 20 || !waveSystem.hasBossBeenSpawned() || !enemies.empty()) return false;
+bool drawVictory(WaveManager& waveSystem, vector<Enemy*>& enemies, vector<Entity*>& entities, Player& player) {
+    if (waveSystem.getCurrentWaveNumber() != 20 || !waveSystem.hasBossBeenSpawned()) return false;
+    bool bossIsAlive = false;
+    for (auto e : enemies) {
+        if (dynamic_cast<Boss*>(e) != nullptr) {
+            bossIsAlive = true;
+            break;
+            
+        }
+    }
+    if (bossIsAlive) return false;
+    if (!enemies.empty()) {
+        for (auto enemy : enemies){
+            removeEntity(entities, enemy);
+            delete enemy;
+        }
+        enemies.clear();
+    }
     int total = (int)waveSystem.getInternalTimer(), mins = total / 60, secs = total % 60;
     BeginDrawing();
     ClearBackground(BLACK);
@@ -187,6 +203,7 @@ void fireEnemyBullets(vector<Enemy*>& enemies, Player& player, vector<Bullet*>& 
 
 // Spawn quai theo wave hien tai, co xu ly rieng cho boss
 void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySprites[], vector<Enemy*>& enemies, vector<Entity*>& entities) {
+    if (waveSystem.getCurrentWaveNumber() == 20 && waveSystem.hasBossBeenSpawned()) return;
     const float PIXEL_SPAWN_RADIUS = 960.0f;
     float angle = GetRandomValue(0, 360) * (PI / 180.0f);
     float spawnX = player.getX() + cos(angle) * PIXEL_SPAWN_RADIUS;
@@ -199,6 +216,7 @@ void spawnEnemyWave(WaveManager& waveSystem, Player& player, Texture2D enemySpri
         boss->setPosition(spawnX, spawnY);
         boss->setDamage(waveSystem.getCurrentWaveDamage() * 3);
         boss->setHp((int)(boss->getHp() * multiplier * diffHPMult * 2.0f));
+        boss->initMaxHp();
         enemies.push_back(boss);
         entities.push_back(boss);
         waveSystem.markBossSpawned();
@@ -222,6 +240,7 @@ int main() {
     // Nếu asset/config lỗi, game sẽ log và thoát an toàn.
     try {
         // Khoi tao cua so game, FPS va collision map
+
         InitWindow(1920, 1040, "Arcane Rampage");
         SetExitKey(KEY_NULL);
         SetTargetFPS(60);
@@ -351,7 +370,7 @@ int main() {
                 if (IsKeyPressed(KEY_ESCAPE)) break;
                 continue;
             }
-            if (drawVictory(waveSystem, enemies, player)) {
+            if (drawVictory(waveSystem, enemies, entities, player)) {
                 if (IsKeyPressed(KEY_ESCAPE)) break;
                 continue;
             }

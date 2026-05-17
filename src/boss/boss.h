@@ -9,9 +9,11 @@ private:
     float currentArmor;
     float damageReduction; 
     float armorRegenTimer;
-    const float ARMOR_REGEN_COOLDOWN = 30.0f;
+    const float ARMOR_REGEN_COOLDOWN = 5.0f;
     float hpPercent;
     float armorPercent;
+    int maxHp;
+    bool IsRageMode = false; // Biến để theo dõi trạng thái nổi điên
 
 public:
     // Constructor gọi từ lớp cha Enemy
@@ -21,6 +23,7 @@ public:
     void update() override;
     void draw() override;
     void takeDamage(int damage) override;
+    void initMaxHp();
     float getVisualYOffset() const override { return 0.0f; }
     
 }; 

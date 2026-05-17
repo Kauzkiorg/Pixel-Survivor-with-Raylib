@@ -22,16 +22,17 @@ void Boss::takeDamage(int damage) {
     } else {
         Enemy::takeDamage(damage);
     }
-
-    armorRegenTimer = 0.0f; 
 }
 
 void Boss::update() {
     Enemy::update(); // Vẫn đuổi theo Player
-    // 1. Ép tỉ lệ máu (Max là 5000)
-    hpPercent = (float)this->getHp() / 5000.0f;
+    // 1. Cập nhật tỉ lệ HP và Giáp để vẽ thanh
+    if (maxHp >0) {
+        hpPercent = (float)this->getHp() / maxHp;
+    } else {
+        hpPercent = 1.0f;
+    }
     if (hpPercent < 0) hpPercent = 0;
-    if (hpPercent > 1) hpPercent = 1;
 
     // 2. Ép tỉ lệ giáp (Giả sử maxArmor của bác là 1000)
     if (maxArmor > 0) {
@@ -40,19 +41,25 @@ void Boss::update() {
         armorPercent = 0;
     }
     if (armorPercent < 0) armorPercent = 0;
-    // tao phase 2 de boss noi dien
-    if (this->getHp() < 2000) {
+    // tao phase 2 de boss noi dien khi duoi 25% HP, tang damage va speed, thay doi animation
+    if (hpPercent < 0.5f && !IsRageMode) {
+        IsRageMode = true;
+        this->setDamage(this->getDamage() * 2);
         this->setSpeed(2.8f); 
+        this->setAnimation(8, 0.06f);
+        TraceLog(LOG_INFO, ">>> BOSS ENTERED RAGE MODE! <<<");
     }
 
-    // Hồi giáp sau 30 giây không bị bắn
-    if (currentArmor < maxArmor) {
-        armorRegenTimer += GetFrameTime();
-        if (armorRegenTimer >= ARMOR_REGEN_COOLDOWN) {
-            currentArmor = maxArmor;
-            armorRegenTimer = 0.0f;
-        }
+    // Hồi giáp sau 5 giây không bị bắn
+    armorRegenTimer += GetFrameTime();
+    if (armorRegenTimer >= ARMOR_REGEN_COOLDOWN) {
+        currentArmor = maxArmor;
+        armorRegenTimer = 0.0f;
     }
+    
+}
+void Boss::initMaxHp() {
+    this->maxHp = this ->getHp();
 }
 
 void Boss::draw() {
@@ -78,7 +85,8 @@ void Boss::draw() {
     DrawText(TextFormat("HP: %d", hp), x - 28, y - 38, 16, WHITE);
     // Vẽ thanh Máu (Đỏ)
     DrawRectangle(barX, barY_HP, barWidth, 20, BLACK); // Viền/Nền
-    DrawRectangle(barX, barY_HP, (int)(barWidth * hpPercent), 20, RED);
+    Color hpColor = IsRageMode ? ORANGE : RED; // Đỏ cam khi nổi điên
+    DrawRectangle(barX, barY_HP, (int)(barWidth * hpPercent), 20, hpColor);
     DrawRectangleLines(barX, barY_HP, barWidth, 20, LIGHTGRAY); // Viền cho sắc nét
     // Vẽ thanh Giáp (Xanh SkyBlue)
     if (currentArmor > 0) {

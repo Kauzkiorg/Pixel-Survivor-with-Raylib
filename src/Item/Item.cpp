@@ -3,6 +3,7 @@
 Texture2D blueExpTexture = {};
 Texture2D greenExpTexture = {};
 Texture2D yellowExpTexture = {};
+Texture2D purpleExpTexture = {};
 Texture2D healthPotionTexture = {};
 bool texturesLoaded = false;
 
@@ -12,6 +13,7 @@ void LoadItemTextures() {
     blueExpTexture = LoadTexture("Graphics/BlueExp.png");
     greenExpTexture = LoadTexture("Graphics/GreenExp.png");
     yellowExpTexture = LoadTexture("Graphics/YellowExp.png");
+    purpleExpTexture = LoadTexture("Graphics/PurpleExp.png");
     healthPotionTexture = LoadTexture("Graphics/HealthPotion.png");
     texturesLoaded = true;
 }
@@ -22,14 +24,16 @@ void UnloadItemTextures() {
     UnloadTexture(blueExpTexture);
     UnloadTexture(greenExpTexture);
     UnloadTexture(yellowExpTexture);
+    UnloadTexture(purpleExpTexture);
     UnloadTexture(healthPotionTexture);
     texturesLoaded = false;
 }
 
 Texture2D Item::getTexture() const {
     if (ID == 1) return healthPotionTexture;
-    if (expValue <= 10) return yellowExpTexture;
-    if (expValue <= 20) return blueExpTexture;
+    if (expValue == 50) return yellowExpTexture;
+    if (expValue == 60) return blueExpTexture;
+    if (expValue == 70) return purpleExpTexture;
     return greenExpTexture;
 }
 
