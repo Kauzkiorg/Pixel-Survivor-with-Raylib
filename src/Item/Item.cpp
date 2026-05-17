@@ -28,8 +28,8 @@ void UnloadItemTextures() {
 
 Texture2D Item::getTexture() const {
     if (ID == 1) return healthPotionTexture;
-    if (expValue <= 10) return yellowExpTexture;
-    if (expValue <= 20) return blueExpTexture;
+    if (expValue <= 50) return yellowExpTexture;
+    if (expValue <= 60) return blueExpTexture;
     return greenExpTexture;
 }
 

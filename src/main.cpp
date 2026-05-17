@@ -199,6 +199,7 @@ int main() {
     // Nếu asset/config lỗi, game sẽ log và thoát an toàn.
     try {
         // Khoi tao cua so game, FPS va collision map
+
         InitWindow(1920, 1040, "Arcane Rampage");
         SetExitKey(KEY_NULL);
         SetTargetFPS(60);

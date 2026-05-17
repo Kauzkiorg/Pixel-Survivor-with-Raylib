@@ -57,7 +57,7 @@ int WaveManager::getRandomEnemyType() {
     // Mở khóa quái dựa trên số WAVE hiện tại
     switch (stage){
         case 0: // Waves 1-4
-            return 3; // NORMAL only
+            return 0; // NORMAL only
         case 1: // Waves 5-8
             return (r < 70) ? 0 : 1; // 70% NORMAL, 30% FAST
         case 2: // Waves 9-12
